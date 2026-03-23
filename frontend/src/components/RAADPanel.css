@@ -1,0 +1,300 @@
+/* ── RAAD — icône déclencheur (bord droit du chat) ─────────────────────── */
+.raad-trigger {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.raad-icon-btn {
+  width: 28px;
+  background: var(--surf, #161B22);
+  border: 1px solid var(--border, #30363D);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  color: var(--dim, #8B949E);
+  cursor: pointer;
+  padding: 10px 0;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: background .15s, color .15s, border-color .15s;
+  writing-mode: vertical-lr;
+  letter-spacing: .06em;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  user-select: none;
+}
+.raad-icon-btn:hover,
+.raad-icon-btn.pinned {
+  background: var(--surf2, #1C2333);
+  color: var(--accent, #3B82F6);
+  border-color: var(--accent, #3B82F6);
+}
+
+/* ── Panel principal ────────────────────────────────────────────────────── */
+.raad-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--surf, #161B22);
+  border-left: 1px solid var(--border, #30363D);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, .5);
+  transform: translateX(100%);
+  transition: transform .22s cubic-bezier(.4, 0, .2, 1);
+  overflow: hidden;
+}
+.raad-panel.open {
+  transform: translateX(0);
+}
+
+/* ── En-tête ────────────────────────────────────────────────────────────── */
+.raad-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #30363D);
+  background: var(--surf2, #1C2333);
+  flex-shrink: 0;
+}
+.raad-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent, #3B82F6);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  flex: 1;
+}
+.raad-header-btn {
+  background: none;
+  border: none;
+  color: var(--dim, #8B949E);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+}
+.raad-header-btn:hover { color: var(--text, #E6EDF3); background: var(--border, #30363D); }
+.raad-pin-btn.pinned   { color: var(--accent, #3B82F6); }
+
+/* ── Zone de recherche ──────────────────────────────────────────────────── */
+.raad-search-wrap {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #30363D);
+  flex-shrink: 0;
+}
+.raad-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg, #0D1117);
+  border: 1px solid var(--border, #30363D);
+  border-radius: 6px;
+  color: var(--text, #E6EDF3);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color .15s;
+}
+.raad-search-input:focus { border-color: var(--accent, #3B82F6); }
+.raad-search-input::placeholder { color: var(--mute, #484F58); }
+
+/* ── Contenu scrollable ─────────────────────────────────────────────────── */
+.raad-body {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, #30363D) transparent;
+}
+
+/* ── États ──────────────────────────────────────────────────────────────── */
+.raad-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--dim, #8B949E);
+  font-size: 12px;
+}
+.raad-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border, #30363D);
+  border-top-color: var(--accent, #3B82F6);
+  border-radius: 50%;
+  animation: raad-spin .7s linear infinite;
+}
+@keyframes raad-spin { to { transform: rotate(360deg); } }
+
+.raad-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--mute, #484F58);
+  font-size: 12px;
+}
+.raad-error {
+  padding: 12px 16px;
+  font-size: 11px;
+  color: var(--danger, #F85149);
+  background: rgba(248, 81, 73, .08);
+  border-bottom: 1px solid rgba(248, 81, 73, .2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.raad-retry-btn {
+  background: none;
+  border: 1px solid var(--danger, #F85149);
+  color: var(--danger, #F85149);
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 2px 7px;
+  cursor: pointer;
+}
+
+/* ── Arborescence ───────────────────────────────────────────────────────── */
+.raad-folder-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text, #E6EDF3);
+  transition: background .1s;
+  user-select: none;
+}
+.raad-folder-item:hover  { background: rgba(255,255,255,.04); }
+.raad-folder-item.active { background: rgba(59,130,246,.12); color: var(--accent, #3B82F6); }
+
+.raad-folder-chevron {
+  color: var(--mute, #484F58);
+  font-size: 10px;
+  width: 12px;
+  flex-shrink: 0;
+  transition: transform .15s;
+}
+.raad-folder-chevron.open { transform: rotate(90deg); }
+
+.raad-folder-icon  { font-size: 13px; flex-shrink: 0; }
+.raad-folder-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.raad-folder-lock  { font-size: 10px; color: var(--mute, #484F58); flex-shrink: 0; }
+
+/* Indentation sous-dossiers */
+.raad-folder-children { padding-left: 18px; }
+
+/* ── Retour arborescence ─────────────────────────────────────────────────── */
+.raad-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border, #30363D);
+  color: var(--dim, #8B949E);
+  font-size: 11px;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: color .15s;
+}
+.raad-back-btn:hover { color: var(--text, #E6EDF3); }
+
+/* ── Documents ──────────────────────────────────────────────────────────── */
+.raad-folder-label {
+  padding: 8px 12px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--mute, #484F58);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.raad-doc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text, #E6EDF3);
+  transition: background .1s;
+  position: relative;
+}
+.raad-doc-item:hover { background: rgba(59,130,246,.1); }
+
+.raad-doc-icon { font-size: 14px; flex-shrink: 0; }
+.raad-doc-info { flex: 1; overflow: hidden; }
+.raad-doc-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.raad-doc-date { font-size: 10px; color: var(--mute, #484F58); margin-top: 1px; }
+.raad-doc-insert { font-size: 10px; color: var(--accent, #3B82F6); flex-shrink: 0; opacity: 0; transition: opacity .15s; }
+.raad-doc-item:hover .raad-doc-insert { opacity: 1; }
+
+/* ── Tooltip preview ────────────────────────────────────────────────────── */
+.raad-tooltip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 280px;
+  background: var(--surf2, #1C2333);
+  border: 1px solid var(--border, #30363D);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--dim, #8B949E);
+  line-height: 1.5;
+  box-shadow: 0 8px 24px rgba(0,0,0,.6);
+  pointer-events: none;
+}
+.raad-tooltip-filename {
+  font-weight: 700;
+  color: var(--text, #E6EDF3);
+  margin-bottom: 5px;
+  font-size: 11px;
+}
+
+/* ── Résultats de recherche ─────────────────────────────────────────────── */
+.raad-search-result {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  cursor: pointer;
+  transition: background .1s;
+}
+.raad-search-result:hover { background: rgba(59,130,246,.1); }
+.raad-search-result-file {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text, #E6EDF3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.raad-search-result-folder {
+  font-size: 10px;
+  color: var(--mute, #484F58);
+  margin: 1px 0;
+}
+.raad-search-result-extract {
+  font-size: 11px;
+  color: var(--dim, #8B949E);
+  line-height: 1.45;
+  margin-top: 3px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

@@ -1,0 +1,115 @@
+/* ── Onboarding ──────────────────────────────────────────────────────────── */
+.onboarding-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.onboarding-card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 36px;
+  width: 460px; max-width: 95vw; max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 40px 100px rgba(0,0,0,.7);
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+
+/* Progress dots */
+.onboarding-progress {
+  display: flex; justify-content: center; gap: 8px; margin-bottom: 28px;
+}
+.progress-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border); transition: all .2s;
+}
+.progress-dot.done { background: var(--accent); }
+.progress-dot.active { background: var(--accent); transform: scale(1.4); }
+
+/* Step */
+.onboarding-step { text-align: center; }
+.step-icon { font-size: 44px; margin-bottom: 10px; }
+.onboarding-step h2 {
+  font-size: 20px; font-weight: 700;
+  color: var(--text); margin: 0 0 10px;
+}
+.onboarding-step p {
+  color: var(--dim); font-size: 14px; line-height: 1.65; margin: 0 0 22px;
+}
+.onboarding-step p a { color: var(--accent); text-decoration: underline; }
+
+/* Key input */
+.key-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.onboarding-input {
+  flex: 1; padding: 11px 13px;
+  background: var(--surf2); border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 14px; color: var(--text); outline: none;
+  transition: border-color .15s;
+}
+.onboarding-input::placeholder { color: var(--mute); }
+.onboarding-input:focus { border-color: var(--accent); }
+.onboarding-input.large {
+  width: 100%; font-size: 17px; text-align: center; padding: 14px;
+}
+.test-key-btn {
+  padding: 11px 16px; background: var(--accent); border: none;
+  border-radius: 8px; color: #fff; font-weight: 700;
+  cursor: pointer; white-space: nowrap; transition: background .15s;
+}
+.test-key-btn:hover:not(:disabled) { background: #2563EB; }
+.test-key-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.key-status {
+  font-size: 13px; padding: 8px 12px;
+  border-radius: 7px; margin-bottom: 10px; font-weight: 500;
+}
+.key-status.valid  { background: rgba(63,185,80,.1); color: var(--ok); border: 1px solid rgba(63,185,80,.3); }
+.key-status.invalid { background: rgba(248,81,73,.1); color: var(--danger); border: 1px solid rgba(248,81,73,.3); }
+
+.step-note {
+  font-size: 12px; color: var(--mute); margin-top: 12px;
+  background: var(--surf2); padding: 8px 12px; border-radius: 8px;
+  text-align: left; line-height: 1.5; border: 1px solid var(--border);
+}
+.step-note code {
+  font-family: monospace; background: var(--bg);
+  padding: 1px 5px; border-radius: 4px; color: var(--accent2);
+}
+
+/* Options */
+.option-list { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.option-card {
+  padding: 11px 15px;
+  background: var(--surf2); border: 1.5px solid var(--border);
+  border-radius: 9px; cursor: pointer; transition: all .15s;
+}
+.option-card:hover { border-color: var(--accent); background: var(--surf); }
+.option-card.selected { border-color: var(--accent); background: rgba(59,130,246,.1); }
+.option-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.option-desc { font-size: 12px; color: var(--mute); }
+
+/* Nav */
+.onboarding-nav { display: flex; align-items: center; margin-top: 28px; gap: 10px; }
+.nav-back {
+  padding: 9px 16px; background: none;
+  border: 1.5px solid var(--border); border-radius: 9px;
+  color: var(--mute); font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.nav-back:hover { border-color: var(--dim); color: var(--text); }
+.nav-next {
+  padding: 9px 22px; background: var(--accent); border: none;
+  border-radius: 9px; color: #fff; font-size: 13px;
+  font-weight: 700; cursor: pointer; transition: background .15s;
+}
+.nav-next:hover:not(:disabled) { background: #2563EB; }
+.nav-next:disabled { opacity: .35; cursor: not-allowed; }
+.nav-finish {
+  padding: 11px 26px; background: var(--ok); border: none;
+  border-radius: 9px; color: #fff; font-size: 14px;
+  font-weight: 700; cursor: pointer; transition: all .15s;
+  box-shadow: 0 4px 18px rgba(63,185,80,.25);
+}
+.nav-finish:hover:not(:disabled) { background: #2ea043; }
+.nav-finish:disabled { opacity: .4; cursor: not-allowed; }

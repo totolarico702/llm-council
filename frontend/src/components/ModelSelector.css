@@ -1,0 +1,199 @@
+.model-selector {
+  border-top: 1px solid #e8e8e8;
+  background: #fafafa;
+  padding: 8px 24px;
+}
+
+.model-selector.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.model-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.model-selector-title {
+  font-size: 12px;
+  color: #666;
+}
+
+.toggle-models-btn {
+  font-size: 12px;
+  padding: 3px 10px;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 12px;
+  cursor: pointer;
+  color: #4a90e2;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.toggle-models-btn:hover { background: #f0f7ff; }
+
+/* Badges sélectionnés */
+.selected-models-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.model-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #e8f0fe;
+  border: 1px solid #4a90e2;
+  border-radius: 14px;
+  font-size: 12px;
+  color: #2a5db0;
+}
+
+.model-badge.chairman {
+  background: #fff8e1;
+  border-color: #f5a623;
+  color: #7a5000;
+}
+
+.chairman-crown { font-size: 11px; }
+
+.model-badge-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-badge-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: #999;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.model-badge-remove:hover { color: #e53e3e; }
+
+/* Picker */
+.model-picker {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 6px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.model-category { margin-bottom: 12px; }
+
+.model-category-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.model-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+.model-card {
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #fafafa;
+}
+
+.model-card:hover { border-color: #4a90e2; background: #f0f7ff; }
+
+.model-card.selected {
+  border-color: #4a90e2;
+  background: #e8f0fe;
+}
+
+.model-card-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.model-card-desc {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.model-card-cost { font-size: 12px; }
+
+/* Custom model */
+.custom-model-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.custom-model-input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
+}
+
+.custom-model-input:focus { border-color: #4a90e2; }
+
+.custom-model-add {
+  padding: 7px 12px;
+  background: #4a90e2;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.custom-model-add:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.model-hint {
+  font-size: 11px;
+  color: #bbb;
+  margin-top: 6px;
+  text-align: center;
+}
+
+/* Modèle sélectionné en mode council manuel */
+.model-card.selected {
+  border-color: var(--accent, #3B82F6);
+  background: rgba(59,130,246,.12);
+  box-shadow: 0 0 0 1px var(--accent, #3B82F6);
+}
+
+/* Modèle sélectionné en mode council manuel */
+.model-card.selected {
+  border-color: var(--accent, #3B82F6);
+  background: rgba(59,130,246,.12);
+  box-shadow: 0 0 0 1px var(--accent, #3B82F6);
+}

@@ -1,0 +1,16 @@
+/* ── Stage 3 — Chairman ───────────────────────────────────────────────────── */
+.stage3 {
+  background: rgba(63,185,80,.05);
+  border-color: rgba(63,185,80,.25) !important;
+}
+.final-response {
+  background: var(--surf2); padding: 16px;
+  border-radius: 6px; border: 1px solid rgba(63,185,80,.2);
+}
+.chairman-label {
+  color: var(--ok); font-size: 11px;
+  font-family: monospace; margin-bottom: 10px; font-weight: 700;
+}
+.final-text {
+  color: var(--text); line-height: 1.75; font-size: 14px;
+}
