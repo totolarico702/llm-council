@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useModels } from '../modelsStore';
 import { apiFetch } from '../api';
 import { ROUTES } from '../api/routes';
+import PipelineAssistant from './PipelineAssistant';
 import './PipelineEditor.css';
 
 const ROLES = [
@@ -355,6 +356,12 @@ export default function PipelineEditor({ group, onSave, onClose }) {
   const [dirty, setDirty]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false); // M9
   const [toast, setToast] = useState(null); // { msg, type: 'ok'|'err' }
+  const [showAssistant, setShowAssistant] = useState(false);
+  const [importModal, setImportModal]     = useState(false);
+  const [importText, setImportText]       = useState('');
+  const [importPreview, setImportPreview] = useState(null);
+  const [importError, setImportError]     = useState(null);
+  const importFileRef = useRef(null);
 
   const showToast = (msg, type = 'ok') => {
     setToast({ msg, type });
@@ -786,6 +793,71 @@ export default function PipelineEditor({ group, onSave, onClose }) {
     }
   };
 
+  const handleExportCog = async () => {
+    if (!group?.id) return
+    const res = await apiFetch(ROUTES.pipelines.exportCog(group.id))
+    if (!res || !res.ok) return
+    const cog  = await res.json()
+    const blob = new Blob([JSON.stringify(cog, null, 2)], { type: 'application/json' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `${(group.name || 'pipeline').toLowerCase().replace(/\s+/g, '-')}.cog.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImportFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result)
+        await previewImport(parsed)
+      } catch {
+        setImportError('JSON invalide')
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  const previewImport = async (parsed) => {
+    const res  = await apiFetch(ROUTES.pipelines.validateCog, {
+      method: 'POST', body: JSON.stringify(parsed),
+    })
+    const data = await res.json()
+    if (data.valid) {
+      setImportPreview(parsed)
+      setImportError(null)
+    } else {
+      setImportError(data.error || 'Invalide')
+      setImportPreview(null)
+    }
+  }
+
+  const handleConfirmImport = async () => {
+    if (!importPreview) return
+    const res = await apiFetch(ROUTES.pipelines.importCog, {
+      method: 'POST', body: JSON.stringify(importPreview),
+    })
+    if (res?.ok) {
+      const imported = await res.json()
+      setImportModal(false)
+      setImportPreview(null)
+      setImportText('')
+      onSave?.()   // rafraîchir la liste des pipelines
+      alert(`✅ Pipeline "${imported.name}" importé`)
+    }
+  }
+
+  const handleCopyJson = async () => {
+    const json = JSON.stringify({ nodes, edges }, null, 2)
+    await navigator.clipboard.writeText(json)
+    alert('JSON copié !')
+  }
+
   const selectedNode = nodes.find(n => n.id === selectedId) || null;
 
   // Trouver le terminal (aucun node ne le cible)
@@ -839,6 +911,13 @@ export default function PipelineEditor({ group, onSave, onClose }) {
             title="Passer tous les nœuds LLM sur le premier modèle Ollama disponible">🖥 Tout en local</button>
           <button className="pe-toolbar-btn pe-btn-cloud" onClick={applyAllCloud}
             title="Repasser tous les nœuds LLM sur le modèle cloud par défaut">☁ Tout en cloud</button>
+          <div className="pe-toolbar-sep" />
+          {/* Boutons export/import/assistant */}
+          <button onClick={() => setImportModal(true)} className="pe-toolbar-btn">📥 Importer</button>
+          <button onClick={handleExportCog} className="pe-toolbar-btn">📤 Exporter</button>
+          <button onClick={handleCopyJson} className="pe-toolbar-btn">📋 Copier JSON</button>
+          <button onClick={() => setShowAssistant(a => !a)} className="pe-toolbar-btn"
+            style={showAssistant ? { background: '#1d3a6e' } : {}}>🤖 Assistant</button>
           {toast && (
             <span className={`pe-toast pe-toast-${toast.type}`}>{toast.msg}</span>
           )}
@@ -1019,7 +1098,68 @@ export default function PipelineEditor({ group, onSave, onClose }) {
               onClose={() => setSelectedId(null)}
             />
           </div>
+
+          {/* Assistant sidebar */}
+          {showAssistant && (
+            <PipelineAssistant
+              currentPipeline={{ nodes, edges }}
+              onApply={(cog) => {
+                setNodes(cog.nodes || [])
+                setEdges(cog.edges || [])
+              }}
+              onClose={() => setShowAssistant(false)}
+            />
+          )}
         </div>
+
+        {/* Import modal */}
+        {importModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: 10, padding: 24, width: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, color: '#E6EDF3', fontSize: 15 }}>📥 Importer un pipeline .cog</h3>
+                <button onClick={() => { setImportModal(false); setImportPreview(null); setImportText(''); setImportError(null); }} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 18 }}>✕</button>
+              </div>
+
+              {/* Bouton fichier */}
+              <button onClick={() => importFileRef.current?.click()} style={{ padding: '8px 14px', background: '#21262D', border: '1px solid #30363D', borderRadius: 6, color: '#E6EDF3', cursor: 'pointer' }}>
+                📂 Choisir un fichier .json / .cog
+              </button>
+              <input ref={importFileRef} type="file" accept=".json,.cog" hidden onChange={handleImportFile} />
+
+              {/* Coller JSON */}
+              <textarea
+                placeholder='Ou coller le JSON ici…'
+                value={importText}
+                onChange={e => setImportText(e.target.value)}
+                style={{ height: 160, background: '#0D1117', border: '1px solid #30363D', borderRadius: 6, color: '#E6EDF3', padding: 10, fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }}
+              />
+              {importText && (
+                <button onClick={async () => { try { await previewImport(JSON.parse(importText)) } catch { setImportError('JSON invalide') } }} style={{ padding: '6px 12px', background: '#21262D', border: '1px solid #30363D', borderRadius: 6, color: '#E6EDF3', cursor: 'pointer' }}>
+                  🔍 Valider
+                </button>
+              )}
+
+              {importError && <div style={{ color: '#F85149', fontSize: 12 }}>⚠ {importError}</div>}
+
+              {importPreview && (
+                <div style={{ background: '#0D1117', border: '1px solid #238636', borderRadius: 6, padding: 12, fontSize: 12, color: '#3FB950' }}>
+                  ✅ <strong>{importPreview.name}</strong> — {importPreview.nodes?.length ?? 0} nœuds, {importPreview.edges?.length ?? 0} connexions
+                  {importPreview.description && <div style={{ color: '#8B949E', marginTop: 4 }}>{importPreview.description}</div>}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+                <button onClick={() => { setImportModal(false); setImportPreview(null); setImportText(''); setImportError(null); }} style={{ padding: '6px 16px', background: '#21262D', border: '1px solid #30363D', borderRadius: 6, color: '#E6EDF3', cursor: 'pointer' }}>
+                  Annuler
+                </button>
+                <button onClick={handleConfirmImport} disabled={!importPreview} style={{ padding: '6px 16px', background: importPreview ? '#238636' : '#1c2b1e', border: '1px solid #2ea043', borderRadius: 6, color: importPreview ? '#fff' : '#555', cursor: importPreview ? 'pointer' : 'not-allowed' }}>
+                  ✅ Confirmer l'import
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Footer ── */}
         <div className="pe-footer">

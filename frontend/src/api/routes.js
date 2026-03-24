@@ -70,7 +70,11 @@ export const ROUTES = {
 
   // ── Pipelines ──────────────────────────────────────────
   pipelines: {
-    allowed:        `${BASE}/pipelines/allowed`,
+    allowed:      `${BASE}/pipelines/allowed`,
+    importCog:    `${BASE}/pipelines/import-cog`,
+    validateCog:  `${BASE}/pipelines/validate-cog`,
+    exportCog:    (id) => `${BASE}/pipelines/${id}/export-cog`,
+    assistant:    `${BASE}/pipelines/assistant`,
   },
 
   // ── Local (Ollama) ─────────────────────────────────────

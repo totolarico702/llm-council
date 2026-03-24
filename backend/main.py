@@ -1906,6 +1906,167 @@ async def export_project(project_id: str, body: dict,
     return StreamingResponse(buf, media_type="application/zip",
                              headers={"Content-Disposition": "attachment; filename=export.zip"})
 
+# ── COG — Import/Export/Validate/Assistant ─────────────────────────────────────
+
+@api_v1.post("/pipelines/import-cog")
+async def import_cog(body: dict, _: dict = Depends(require_admin)):
+    """Importe un .cog JSON → crée ou met à jour un pipeline (groupe)."""
+    from .cog_parser import parse_cog, cog_to_dag
+    try:
+        cog = parse_cog(body)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    dag = cog_to_dag(cog)
+    # Créer un groupe avec le DAG
+    from .db import _table, Q as _Q
+    import uuid, datetime as _dt
+    groups = _table("groups")
+    existing = groups.get(_Q.name == cog["name"])
+    now = _dt.datetime.utcnow().isoformat()
+    if existing:
+        groups.update({
+            "nodes": dag["nodes"], "edges": dag["edges"],
+            "config": dag.get("config", {}), "updated_at": now,
+            "description": cog.get("description", ""),
+        }, _Q.name == cog["name"])
+        return {**existing, "nodes": dag["nodes"], "edges": dag["edges"], "updated": True}
+    else:
+        group = {
+            "id": str(uuid.uuid4()), "name": cog["name"],
+            "description": cog.get("description", ""),
+            "nodes": dag["nodes"], "edges": dag["edges"],
+            "config": dag.get("config", {}),
+            "created_at": now, "updated_at": now,
+        }
+        groups.insert(group)
+        return {**group, "updated": False}
+
+
+@api_v1.get("/pipelines/{pipeline_id}/export-cog")
+async def export_cog(pipeline_id: str, _: dict = Depends(require_admin)):
+    """Exporte un pipeline existant au format .cog JSON."""
+    from .cog_parser import dag_to_cog
+    from .db import _table, Q as _Q
+    from fastapi.responses import JSONResponse
+    group = _table("groups").get(_Q.id == pipeline_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Pipeline introuvable")
+    cog = dag_to_cog(group, {
+        "name": group.get("name", "pipeline"),
+        "description": group.get("description", ""),
+        "author": "admin",
+        "created_at": group.get("created_at", ""),
+        "tags": group.get("tags", []),
+    })
+    filename = group.get("name", "pipeline").lower().replace(" ", "-")
+    return JSONResponse(
+        content=cog,
+        headers={"Content-Disposition": f'attachment; filename="{filename}.cog.json"'}
+    )
+
+
+@api_v1.post("/pipelines/validate-cog")
+async def validate_cog(body: dict, _: dict = Depends(require_admin)):
+    """Valide un .cog sans l'importer."""
+    from .cog_parser import parse_cog
+    try:
+        cog = parse_cog(body)
+        return {
+            "valid": True,
+            "name": cog.get("name"),
+            "node_count": len(cog.get("nodes", [])),
+            "edge_count": len(cog.get("edges", [])),
+        }
+    except ValueError as e:
+        return {"valid": False, "error": str(e)}
+
+
+@api_v1.post("/pipelines/assistant")
+async def pipeline_assistant(body: dict, _: dict = Depends(require_admin)):
+    """Assistant LLM pour générer des pipelines .cog en langage naturel."""
+    import pathlib, json as _json
+    from .openrouter import query_model
+    from .config import DEFAULT_CHAIRMAN
+
+    message = body.get("message", "")
+    history = body.get("conversation_history", [])
+    current = body.get("current_pipeline")
+
+    # Charger les exemples few-shot
+    examples_dir = pathlib.Path(__file__).parent / "cog_examples"
+    examples_text = ""
+    if examples_dir.exists():
+        for f in sorted(examples_dir.glob("*.cog.json")):
+            try:
+                examples_text += f"\n### Exemple : {f.stem}\n```json\n{f.read_text(encoding='utf-8')}\n```\n"
+            except Exception:
+                pass
+
+    system_prompt = f"""Tu es un expert en construction de pipelines LLM Council.
+Tu aides l'utilisateur à créer des pipelines DAG en générant du JSON au format .cog v1.0.
+
+Grammaire .cog disponible :
+- type "llm" : nœud LLM cloud (OpenRouter)
+- type "llm_local" : nœud LLM local (Ollama)
+- type "rag_search" : recherche dans la mémoire RAG
+- type "tool" : outil (tool_type: "web_search" ou "fact_check")
+- type "mcp" : appel serveur MCP externe
+- type "condition" : branchement conditionnel
+- type "merge" : fusion de plusieurs sorties
+- type "input" : point d'entrée (obligatoire, id: "input")
+- type "output" : point de sortie (obligatoire, id: "output")
+
+Variables disponibles dans les prompts : {{{{user_input}}}}, {{{{context}}}}, {{{{previous_output}}}}
+
+Règles :
+1. Toujours inclure un nœud "input" et un nœud "output"
+2. Les edges connectent les nœuds dans l'ordre d'exécution
+3. Répondre UNIQUEMENT avec un JSON valide entre balises ```json et ```, sans texte avant ni après
+4. Utiliser des id courts et descriptifs (ex: "rag_docs", "llm_analyse")
+5. cog_version doit être "1.0"
+
+Exemples de pipelines :
+{examples_text}"""
+
+    messages = [{"role": "system", "content": system_prompt}]
+    for h in history[-10:]:
+        messages.append({"role": h["role"], "content": h["content"]})
+
+    if current:
+        message = f"Pipeline actuel :\n```json\n{_json.dumps(current, ensure_ascii=False, indent=2)}\n```\n\nDemande : {message}"
+
+    messages.append({"role": "user", "content": message})
+
+    result = await query_model(
+        model=DEFAULT_CHAIRMAN,
+        messages=messages,
+    )
+
+    if not result or not result.get("content"):
+        raise HTTPException(status_code=500, detail="L'assistant n'a pas répondu")
+
+    raw = result["content"]
+
+    # Extraire le JSON de la réponse
+    cog = None
+    import re
+    match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
+    if match:
+        try:
+            from .cog_parser import parse_cog
+            cog = parse_cog(match.group(1))
+        except Exception:
+            cog = None
+    if cog is None:
+        try:
+            from .cog_parser import parse_cog
+            cog = parse_cog(raw.strip())
+        except Exception:
+            pass
+
+    return {"message": raw, "cog": cog}
+
+
 # Enregistrer toutes les routes v1
 app.include_router(api_v1)
 
