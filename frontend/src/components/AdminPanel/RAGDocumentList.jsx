@@ -4,7 +4,8 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { auth, apiFetch } from '../../api';
+import { apiFetch } from '../../api';
+import { ROUTES } from '../../api/routes.js';
 
 function fmtDate(iso) {
   if (!iso) return '—';
@@ -34,7 +35,8 @@ export default function RAGDocumentList({ folder, onDocCountChange }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch(`/rag/documents?folder_id=${encodeURIComponent(folder.id)}`);
+      const res  = await apiFetch(`${ROUTES.rag.documents}?folder_id=${encodeURIComponent(folder.id)}`);
+      const data = res && res.ok ? await res.json() : [];
       const list = Array.isArray(data) ? data : [];
       setDocs(list);
       onDocCountChange?.(folder.id, list.length);
@@ -51,21 +53,18 @@ export default function RAGDocumentList({ folder, onDocCountChange }) {
     const uid = `${Date.now()}-${Math.random()}`;
     setUploads(prev => [...prev, { id: uid, name: file.name, progress: 10, status: 'uploading' }]);
 
-    const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001';
-    const token    = auth.getToken();
     const formData = new FormData();
     formData.append('file', file);
     formData.append('folder_id', folder.id);
 
     try {
-      const resp = await fetch(`${API_BASE}/api/v1/rag/documents`, {
-        method:  'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body:    formData,
+      const resp = await apiFetch(ROUTES.rag.documents, {
+        method: 'POST',
+        body:   formData,
       });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
-        throw new Error(err.detail || resp.statusText);
+      if (!resp || !resp.ok) {
+        const err = resp ? await resp.json().catch(() => ({ detail: resp.statusText })) : {};
+        throw new Error(err.detail || (resp ? resp.statusText : 'Erreur réseau'));
       }
       setUploads(prev => prev.map(u => u.id === uid ? { ...u, progress: 100, status: 'ok' } : u));
       fetchDocs();
@@ -90,7 +89,7 @@ export default function RAGDocumentList({ folder, onDocCountChange }) {
   const handleDelete = async (doc) => {
     if (!window.confirm(`Supprimer « ${doc.filename} » et ses chunks ?`)) return;
     try {
-      await apiFetch(`/rag/documents/${doc.id}`, { method: 'DELETE' });
+      await apiFetch(ROUTES.rag.document(doc.id), { method: 'DELETE' });
       fetchDocs();
     } catch (e) {
       alert(`Erreur : ${e.message}`);
@@ -100,7 +99,7 @@ export default function RAGDocumentList({ folder, onDocCountChange }) {
   const handleReindex = async (doc) => {
     setReindexing(prev => new Set(prev).add(doc.id));
     try {
-      await apiFetch(`/rag/documents/${doc.id}/reindex`, { method: 'POST' });
+      await apiFetch(ROUTES.rag.documentReindex(doc.id), { method: 'POST' });
       fetchDocs();
     } catch (e) {
       alert(`Erreur réindexation : ${e.message}`);

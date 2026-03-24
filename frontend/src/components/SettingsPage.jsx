@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useModels } from '../modelsStore';
+import { apiFetch } from '../api';
+import { ROUTES } from '../api/routes';
 import './SettingsPage.css';
-
-const API_BASE = 'http://localhost:8001';
 
 const IMAGE_MODELS = [
   { id: 'black-forest-labs/flux-1.1-pro',               name: 'Flux 1.1 Pro',         desc: 'Meilleure qualité' },
@@ -32,8 +32,8 @@ export default function SettingsPage({ onClose }) {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_BASE}/api/v1/preferences`).then(r => r.json()),
-      fetch(`${API_BASE}/api/v1/groups`).then(r => r.json()),
+      apiFetch(ROUTES.preferences.get).then(r => r.json()),
+      apiFetch(ROUTES.groups.list).then(r => r.json()),
     ]).then(([p, g]) => {
       setPrefs(p);
       setGroups(g);
@@ -50,9 +50,8 @@ export default function SettingsPage({ onClose }) {
     if (!apiKey.trim()) return;
     setKeyStatus('testing');
     try {
-      const r = await fetch(`${API_BASE}/api/v1/preferences/test-key`, {
+      const r = await apiFetch(ROUTES.preferences.testKey, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: apiKey.trim() }),
       });
       const d = await r.json();
@@ -64,9 +63,8 @@ export default function SettingsPage({ onClose }) {
   const save = async () => {
     setSaving(true); setSaveError(''); setSaved(false);
     try {
-      const r = await fetch(`${API_BASE}/api/v1/preferences`, {
+      const r = await apiFetch(ROUTES.preferences.save, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username:       username.trim(),
           openrouter_key: apiKey.trim(),

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useModels } from '../modelsStore';
+import { apiFetch } from '../api';
+import { ROUTES } from '../api/routes';
 import './PipelineEditor.css';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001';
 
 const ROLES = [
   { value: 'explorer',       label: '🧭 Explorer',     color: '#3B82F6' },
@@ -381,16 +381,12 @@ export default function PipelineEditor({ group, onSave, onClose }) {
 
   // Charger le modèle par défaut + modèles locaux Ollama au montage
   useEffect(() => {
-    const token = localStorage.getItem('llmc_token');
-    if (!token) return;
-    const headers = { Authorization: `Bearer ${token}` };
-
-    fetch(`${API_BASE}/api/v1/admin/settings`, { headers })
+    apiFetch(ROUTES.admin.settings)
       .then(r => r.ok ? r.json() : null)
       .then(s => { if (s?.default_model) setDefaultModel(s.default_model); })
       .catch(() => {});
 
-    fetch(`${API_BASE}/api/v1/local/models`, { headers })
+    apiFetch(ROUTES.local.models)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
@@ -774,12 +770,9 @@ export default function PipelineEditor({ group, onSave, onClose }) {
                           role_prompt: n.role_prompt || '' };
       });
       const isNew = !group?.id;
-      const token = localStorage.getItem('llmc_token');
-      const headers = { 'Content-Type': 'application/json',
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}) };
-      const res = await fetch(
-        isNew ? `${API_BASE}/api/v1/groups` : `${API_BASE}/api/v1/groups/${group.id}`,
-        { method: isNew ? 'POST' : 'PUT', headers,
+      const res = await apiFetch(
+        isNew ? ROUTES.groups.create : ROUTES.groups.update(group.id),
+        { method: isNew ? 'POST' : 'PUT',
           body: JSON.stringify({ name, nodes: backendNodes }) }
       );
       if (!res.ok) throw new Error(await res.text());

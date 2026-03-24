@@ -6,13 +6,13 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Tree } from 'react-arborist';
-import { api, apiFetch } from '../../api';
+import { apiFetch } from '../../api';
+import { ROUTES } from '../../api/routes.js';
 import { makeNodeRenderer } from './RAGNodeRenderer';
 import RAGPCExplorer from './RAGPCExplorer';
 import RAGAclDrawer  from './RAGAclDrawer';
 import RAGAuditLog   from './RAGAuditLog';
 
-const API_BASE     = import.meta.env.VITE_API_BASE || 'http://localhost:8001';
 const ACCEPTED_EXT = ['.pdf', '.docx', '.txt', '.md'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -92,6 +92,8 @@ export default function RAGTab() {
   const [aclFolder,    setAclFolder]    = useState(null);
   const [treeHeight,   setTreeHeight]   = useState(400);
   const [toasts,       setToasts]       = useState([]);
+  const [auditKey,     setAuditKey]     = useState(0);
+  const [auditOpen,    setAuditOpen]    = useState(false);
 
   const treeRef        = useRef(null);
   const containerRef   = useRef(null);
@@ -117,24 +119,27 @@ export default function RAGTab() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const [folders, statsData] = await Promise.all([
-        apiFetch('/rag/folders'),
-        apiFetch('/admin/rag/stats').catch(() => null),
+      const [foldersRes, statsRes] = await Promise.all([
+        apiFetch(ROUTES.rag.folders),
+        apiFetch(ROUTES.admin.ragStats).catch(() => null),
       ]);
+      const folders   = foldersRes && foldersRes.ok ? await foldersRes.json() : [];
+      const statsData = statsRes   && statsRes.ok   ? await statsRes.json()   : null;
       setStats(statsData);
 
-      const token = api.auth.getToken();
-      fetch(`${API_BASE}/api/v1/admin/archive/list`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }).then(r => r.ok ? r.json() : []).then(setArchives).catch(() => {});
+      apiFetch(ROUTES.admin.archiveList)
+        .then(r => r && r.ok ? r.json() : []).then(setArchives).catch(() => {});
 
       const folderList = Array.isArray(folders) ? folders : [];
       const docsPerFolder = await Promise.all(
         folderList.map(f =>
-          apiFetch(`/rag/documents?folder_id=${encodeURIComponent(f.id)}`).catch(() => [])
+          apiFetch(`${ROUTES.rag.documents}?folder_id=${encodeURIComponent(f.id)}`)
+            .then(r => r && r.ok ? r.json() : [])
+            .catch(() => [])
         )
       );
       setTreeData(buildTree(folderList, docsPerFolder));
+      setAuditKey(k => k + 1);
     } catch (e) {
       console.error('[RAGTab] reload error:', e);
     } finally {
@@ -154,21 +159,19 @@ export default function RAGTab() {
     }
     if (validFiles.length === 0) return;
 
-    const token = api.auth.getToken();
     for (const file of validFiles) {
       addToast(`⏳ Upload en cours : ${file.name}`, 'info');
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder_id', folderId);
       try {
-        const resp = await fetch(`${API_BASE}/api/v1/rag/documents`, {
-          method:  'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          body:    formData,
+        const resp = await apiFetch(ROUTES.rag.documents, {
+          method: 'POST',
+          body:   formData,
         });
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          throw new Error(err.detail || resp.statusText);
+        if (!resp || !resp.ok) {
+          const err = resp ? await resp.json().catch(() => ({})) : {};
+          throw new Error(err.detail || (resp ? resp.statusText : 'Erreur réseau'));
         }
         const doc = await resp.json();
         addToast(`✅ ${file.name} indexé (${doc.chunks ?? '?'} chunks)`, 'ok');
@@ -182,10 +185,12 @@ export default function RAGTab() {
   // ── Handlers react-arborist ─────────────────────────────────────────────────
   const handleCreate = useCallback(async ({ parentId }) => {
     try {
-      const folder = await apiFetch('/rag/folders', {
+      const res    = await apiFetch(ROUTES.rag.folders, {
         method: 'POST',
         body:   JSON.stringify({ name: 'Nouveau dossier', parent_id: parentId || null, service: 'global' }),
       });
+      const folder = res && res.ok ? await res.json() : null;
+      if (!folder) throw new Error('Création échouée');
       const newNode = { id: folder.id, name: folder.name, service: folder.service, isDoc: false, children: [] };
       setTreeData(prev => insertNode(prev, parentId || null, newNode));
       return { id: folder.id };
@@ -198,7 +203,7 @@ export default function RAGTab() {
   const handleRename = useCallback(async ({ id, name, node }) => {
     if (node.data.isDoc) return;
     try {
-      await apiFetch(`/rag/folders/${id}`, {
+      await apiFetch(ROUTES.rag.folder(id), {
         method: 'PATCH',
         body:   JSON.stringify({ name }),
       });
@@ -211,7 +216,7 @@ export default function RAGTab() {
 
   const handleDeleteFolder = useCallback(async (node) => {
     try {
-      await apiFetch(`/rag/folders/${node.id}`, { method: 'DELETE' });
+      await apiFetch(ROUTES.rag.folder(node.id), { method: 'DELETE' });
       setTreeData(prev => removeNode(prev, node.id));
       if (uploadFolder?.id === node.id) setUploadFolder(null);
       if (aclFolder?.id === node.id) setAclFolder(null);
@@ -222,7 +227,7 @@ export default function RAGTab() {
 
   const handleDeleteDoc = useCallback(async (node) => {
     try {
-      await apiFetch(`/rag/documents/${node.id}`, { method: 'DELETE' });
+      await apiFetch(ROUTES.rag.document(node.id), { method: 'DELETE' });
       setTreeData(prev => removeNode(prev, node.id));
     } catch (e) {
       alert(`Erreur suppression : ${e.message}`);
@@ -231,7 +236,7 @@ export default function RAGTab() {
 
   const handleReindex = useCallback(async (node) => {
     try {
-      await apiFetch(`/rag/documents/${node.id}/reindex`, { method: 'POST' });
+      await apiFetch(ROUTES.rag.documentReindex(node.id), { method: 'POST' });
     } catch (e) {
       alert(`Erreur réindexation : ${e.message}`);
     }
@@ -241,7 +246,7 @@ export default function RAGTab() {
     const docId = dragIds[0];
     if (!parentId) return;
     try {
-      await apiFetch(`/rag/documents/${docId}/move`, {
+      await apiFetch(ROUTES.rag.documentMove(docId), {
         method: 'PATCH',
         body:   JSON.stringify({ folder_id: parentId }),
       });
@@ -256,18 +261,13 @@ export default function RAGTab() {
     const fileName = filePath.replace(/\\/g, '/').split('/').filter(Boolean).pop();
     addToast(`⏳ Upload en cours : ${fileName}`, 'info');
     try {
-      const token = api.auth.getToken();
-      const resp  = await fetch(`${API_BASE}/api/v1/rag/documents/from-path`, {
-        method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ file_path: filePath, folder_id: folderId }),
+      const resp = await apiFetch(ROUTES.rag.uploadFromPath, {
+        method: 'POST',
+        body:   JSON.stringify({ file_path: filePath, folder_id: folderId }),
       });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err.detail || resp.statusText);
+      if (!resp || !resp.ok) {
+        const err = resp ? await resp.json().catch(() => ({})) : {};
+        throw new Error(err.detail || (resp ? resp.statusText : 'Erreur réseau'));
       }
       const doc = await resp.json();
       addToast(`✅ ${fileName} indexé (${doc.chunks ?? '?'} chunks)`, 'ok');
@@ -291,7 +291,17 @@ export default function RAGTab() {
   const statusColor = stats?.status === 'ok' ? '#22C55E' : '#F59E0B';
 
   return (
-    <div className="adm-tab-content" style={{ position: 'relative' }}>
+    <div className="adm-tab-content" style={{ padding: 0, gap: 0, overflow: 'hidden' }}>
+
+      {/* Zone scrollable : bandeau + split view */}
+      <div style={{
+        flex: 1, minHeight: 0,
+        overflowY: 'auto',
+        padding: '18px 24px',
+        display: 'flex', flexDirection: 'column', gap: 14,
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'var(--border,#30363D) transparent',
+      }}>
 
       {/* Bandeau */}
       <div className="adm-rag-bar">
@@ -390,22 +400,30 @@ export default function RAGTab() {
               )}
             </div>
 
-            {loading ? (
-              <div className="raga-loading" style={{ padding: 16 }}>
-                <div className="raga-spinner" /> Chargement…
-              </div>
-            ) : treeData.length === 0 ? (
-              <div className="raga-empty" style={{ padding: 16 }}>
-                Aucun dossier — cliquez "+ Nouveau dossier" pour commencer
-              </div>
-            ) : (
+            {/* Tree toujours monté — évite le double-backend react-dnd au remount */}
+            <div style={{ position: 'relative' }}>
+              {loading && treeData.length === 0 && (
+                <div className="raga-loading" style={{ position: 'absolute', inset: 0, zIndex: 1, padding: 16 }}>
+                  <div className="raga-spinner" /> Chargement…
+                </div>
+              )}
+              {!loading && treeData.length === 0 && (
+                <div className="raga-empty" style={{ position: 'absolute', inset: 0, zIndex: 1, padding: 16 }}>
+                  Aucun dossier — cliquez "+ Nouveau dossier" pour commencer
+                </div>
+              )}
+              {loading && treeData.length > 0 && (
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div className="raga-spinner" />
+                </div>
+              )}
               <Tree
                 ref={treeRef}
                 data={treeData}
                 onCreate={handleCreate}
                 onRename={handleRename}
                 onMove={handleMove}
-                height={treeHeight - 33} /* 33px = hauteur du header panneau droit */
+                height={treeHeight - 33}
                 rowHeight={32}
                 indent={20}
                 openByDefault={true}
@@ -417,18 +435,48 @@ export default function RAGTab() {
               >
                 {NodeRenderer}
               </Tree>
-            )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Audit Log */}
-      <div className="raga-section">
-        <div className="raga-section-header">
-          <span className="raga-section-title">📋 Audit Log RAG</span>
+      </div>{/* fin zone scrollable */}
+
+      {/* Tiroir audit — toujours en bas, ne recouvre jamais complètement le split */}
+      <div style={{
+        flexShrink: 0,
+        height: auditOpen ? 320 : 40,
+        transition: 'height 0.25s ease',
+        overflow: 'hidden',
+        borderTop: '2px solid #21262D',
+        background: '#161B22',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        {/* Barre de titre cliquable */}
+        <div
+          onClick={() => setAuditOpen(o => !o)}
+          style={{
+            height: 40, flexShrink: 0,
+            display: 'flex', alignItems: 'center',
+            padding: '0 16px', gap: 8,
+            cursor: 'pointer', userSelect: 'none',
+            borderBottom: auditOpen ? '1px solid #21262D' : 'none',
+          }}
+        >
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#8B949E', flex: 1 }}>
+            📋 Audit Log RAG
+          </span>
+          <span style={{
+            color: '#555', fontSize: 10,
+            display: 'inline-block',
+            transition: 'transform 0.25s',
+            transform: auditOpen ? 'none' : 'rotate(180deg)',
+          }}>▲</span>
         </div>
-        <div className="raga-section-body">
-          <RAGAuditLog folders={treeData.filter(n => !n.isDoc)} />
+        {/* Contenu */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px 12px' }}>
+          <RAGAuditLog folders={treeData.filter(n => !n.isDoc)} refreshKey={auditKey} />
         </div>
       </div>
 

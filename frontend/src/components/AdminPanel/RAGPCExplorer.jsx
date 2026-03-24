@@ -5,9 +5,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { api } from '../../api';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001';
+import { apiFetch } from '../../api';
+import { ROUTES } from '../../api/routes.js';
 
 function fileIcon(ext) {
   if (ext === '.pdf')  return '📕';
@@ -23,14 +22,11 @@ function humanSize(bytes) {
 }
 
 async function fetchDir(path) {
-  const token = api.auth.getToken();
-  const url   = path
-    ? `${API_BASE}/api/v1/fs/browse?path=${encodeURIComponent(path)}`
-    : `${API_BASE}/api/v1/fs/browse`;
-  const resp = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const url = path
+    ? `${ROUTES.fs.browse}?path=${encodeURIComponent(path)}`
+    : ROUTES.fs.browse;
+  const resp = await apiFetch(url);
+  if (!resp || !resp.ok) throw new Error(`HTTP ${resp?.status}`);
   return resp.json();
 }
 
@@ -141,6 +137,7 @@ export default function RAGPCExplorer({ onDragStart }) {
       setItems(data.items);
       setCurrentPath(data.path);
       setParentPath(data.parent);
+      localStorage.setItem('ragpc_last_path', data.path);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -148,7 +145,10 @@ export default function RAGPCExplorer({ onDragStart }) {
     }
   }, []);
 
-  useEffect(() => { loadPath(); }, [loadPath]);
+  useEffect(() => {
+    const saved = localStorage.getItem('ragpc_last_path');
+    loadPath(saved || null);
+  }, [loadPath]);
 
   // Nom court du dossier courant
   const currentName = currentPath

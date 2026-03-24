@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { auth } from '../api';
+import { apiFetch } from '../api';
+import { ROUTES } from '../api/routes';
 import './ImageStudio.css';
 
+// Base URL pour construire les URLs d'affichage des images servies par le backend
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:8001';
-
-function authHeaders(extra = {}) {
-  const token = auth.getToken();
-  return token ? { Authorization: `Bearer ${token}`, ...extra } : extra;
-}
 
 const ENHANCE_MODELS = [
   { id: 'openai/gpt-4o-mini',           label: 'GPT-4o Mini' },
@@ -34,7 +31,7 @@ export default function ImageStudio() {
 
   // Charger les modèles image + la galerie au montage
   useEffect(() => {
-    fetch(`${API}/api/v1/image/models`, { headers: authHeaders() })
+    apiFetch(ROUTES.image.models)
       .then(r => r.json())
       .then(d => {
         setImageModels(d.models || []);
@@ -53,7 +50,7 @@ export default function ImageStudio() {
   }, [selectedModel]);
 
   const loadGallery = () => {
-    fetch(`${API}/api/v1/images`, { headers: authHeaders() })
+    apiFetch(ROUTES.image.list)
       .then(r => r.json())
       .then(d => setGallery(d.images || []))
       .catch(() => {});
@@ -64,9 +61,8 @@ export default function ImageStudio() {
     setLoadingEnhance(true);
     setError(null);
     try {
-      const r = await fetch(`${API}/api/v1/image/enhance-prompt`, {
+      const r = await apiFetch(ROUTES.image.enhancePrompt, {
         method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ prompt: prompt.trim(), model: enhanceModel }),
       });
       if (!r.ok) throw new Error(await r.text());
@@ -91,9 +87,8 @@ export default function ImageStudio() {
     setLoadingGenerate(true);
     setError(null);
     try {
-      const r = await fetch(`${API}/api/v1/image/generate`, {
+      const r = await apiFetch(ROUTES.image.generate, {
         method: 'POST',
-        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           prompt: prompt.trim(),
           model: selectedModel,
@@ -114,7 +109,7 @@ export default function ImageStudio() {
   };
 
   const handleDelete = async (id) => {
-    await fetch(`${API}/api/v1/images/${id}`, { method: 'DELETE', headers: authHeaders() });
+    await apiFetch(ROUTES.image.delete(id), { method: 'DELETE' });
     setGallery(prev => prev.filter(img => img.id !== id));
     if (lightbox?.id === id) setLightbox(null);
   };

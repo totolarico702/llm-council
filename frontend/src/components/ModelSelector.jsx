@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useModels } from '../modelsStore';
 import PipelineEditor from './PipelineEditor';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001';
+import { apiFetch } from '../api';
+import { ROUTES } from '../api/routes';
 
 const WEB_SEARCH_MODES = [
   { value: 'none',      label: '🔍 Sans web',     desc: 'Aucune recherche web' },
@@ -24,7 +24,7 @@ export default function ModelSelector({ selectedModels, onModelsChange, webSearc
   useEffect(() => { fetchPipelines(); }, []);
 
   const fetchPipelines = () => {
-    fetch(`${API_BASE}/api/v1/groups`)
+    apiFetch(ROUTES.groups.list)
       .then(r => r.json())
       .then(data => {
         setPipelines(data);
@@ -52,7 +52,7 @@ export default function ModelSelector({ selectedModels, onModelsChange, webSearc
 
   const deletePipeline = async (id, e) => {
     e.stopPropagation();
-    await fetch(`${API_BASE}/api/v1/groups/${id}`, { method: 'DELETE' });
+    await apiFetch(ROUTES.groups.delete(id), { method: 'DELETE' });
     setPipelines(prev => prev.filter(g => g.id !== id));
     if (activePipelineId === id) setActivePipelineId(null);
   };

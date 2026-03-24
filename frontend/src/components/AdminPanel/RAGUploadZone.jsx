@@ -4,9 +4,8 @@
  */
 
 import React, { useState, useRef } from 'react';
-import { auth } from '../../api';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001';
+import { apiFetch } from '../../api';
+import { ROUTES } from '../../api/routes.js';
 
 const ZONE_STYLE = {
   border: '2px dashed #555',
@@ -31,20 +30,18 @@ export default function RAGUploadZone({ folder, onComplete }) {
     const uid = `${Date.now()}-${Math.random()}`;
     setUploads(prev => [...prev, { id: uid, name: file.name, status: 'uploading' }]);
 
-    const token    = auth.getToken();
     const formData = new FormData();
     formData.append('file', file);
     formData.append('folder_id', folder.id);
 
     try {
-      const resp = await fetch(`${API_BASE}/api/v1/rag/documents`, {
-        method:  'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body:    formData,
+      const resp = await apiFetch(ROUTES.rag.documents, {
+        method: 'POST',
+        body:   formData,
       });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
-        throw new Error(err.detail || resp.statusText);
+      if (!resp || !resp.ok) {
+        const err = resp ? await resp.json().catch(() => ({ detail: resp.statusText })) : {};
+        throw new Error(err.detail || (resp ? resp.statusText : 'Erreur réseau'));
       }
       const doc    = await resp.json();
       const chunks = doc.chunks ?? '?';

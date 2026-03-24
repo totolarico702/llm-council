@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../../api';
+import { ROUTES } from '../../api/routes.js';
 
 const ACTION_OPTIONS = [
   { value: '',                  label: 'Toutes actions' },
@@ -33,7 +34,7 @@ function fmtTs(iso) {
   } catch { return iso; }
 }
 
-export default function RAGAuditLog({ folders }) {
+export default function RAGAuditLog({ folders, refreshKey }) {
   const [logs,    setLogs]    = useState([]);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
@@ -54,7 +55,8 @@ export default function RAGAuditLog({ folders }) {
         ...(filterAction && { action:    filterAction }),
         ...(filterFolder && { folder_id: filterFolder }),
       });
-      const data = await apiFetch(`/rag/audit?${params}`);
+      const res  = await apiFetch(`${ROUTES.rag.audit}?${params}`);
+      const data = res && res.ok ? await res.json() : {};
       const entries = Array.isArray(data.logs) ? data.logs : [];
 
       // Filtre acteur côté client (pas de param actor_name côté backend)
@@ -72,7 +74,7 @@ export default function RAGAuditLog({ folders }) {
     }
   }, [filterAction, filterActor, filterFolder]);
 
-  useEffect(() => { fetchLogs(0); }, [fetchLogs]);
+  useEffect(() => { fetchLogs(0); }, [fetchLogs, refreshKey]);
 
   const handleReset = () => {
     setFilterAction('');

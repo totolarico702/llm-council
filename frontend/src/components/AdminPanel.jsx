@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, apiFetch } from '../api';
+import { ROUTES } from '../api/routes.js';
 import PipelineEditor from './PipelineEditor';
 import RAGTab         from './AdminPanel/RAGTab';
 import RAGAuditLog    from './AdminPanel/RAGAuditLog';
 import './AdminPanel.css';
 import './AdminPanel/RAGAdmin.css';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001';
 
 // ── Modale générique ──────────────────────────────────────────────────────────
 function Modal({ title, onClose, children }) {
@@ -80,7 +79,8 @@ function UsersTab({ services }) {
     setArchivePreview(null);
     setArchiveBusy(true);
     try {
-      const preview = await apiFetch(`/admin/users/${user.id}/archive/preview`);
+      const res = await apiFetch(`${ROUTES.admin.userArchive(user.id)}/preview`);
+      const preview = res && res.ok ? await res.json() : null;
       setArchivePreview(preview);
     } catch (e) {
       alert(`Erreur analyse : ${e.message}`);
@@ -94,7 +94,8 @@ function UsersTab({ services }) {
     if (!archiving) return;
     setArchiveBusy(true);
     try {
-      const result = await apiFetch(`/admin/users/${archiving.id}/archive`, { method: 'POST' });
+      const res = await apiFetch(ROUTES.admin.userArchive(archiving.id), { method: 'POST' });
+      const result = res && res.ok ? await res.json() : {};
       alert(`✅ ${result.login} archivé — ${result.chunks} chunks RAG ingérés`);
       setArchiving(null);
       setArchivePreview(null);
@@ -367,11 +368,7 @@ function PipelinesTab({ pipelines, onPipelinesChange }) {
 
   const handleDelete = async (pipeline) => {
     try {
-      const token = api.auth.getToken();
-      await fetch(`${API_BASE}/api/v1/groups/${pipeline.id}`, {
-        method: 'DELETE',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      await apiFetch(ROUTES.groups.delete(pipeline.id), { method: 'DELETE' });
       setConfirm(null);
       onPipelinesChange();
     } catch (e) { console.error(e); }
@@ -602,7 +599,8 @@ function ModelsTab() {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiFetch('/models', { headers: { Authorization: `Bearer ${api.auth.getToken()}` } });
+      const res = await apiFetch(ROUTES.models.list);
+      const data = res && res.ok ? await res.json() : {};
       setAllModels(data.models || []);
       setAllowedIds(new Set(data.allowed_ids || []));
     } catch(e) { setError(e.message); }
@@ -615,10 +613,10 @@ function ModelsTab() {
     setSaving(s => ({ ...s, [model.id]: true }));
     try {
       if (currentlyAllowed) {
-        await apiFetch(`/admin/allowed-models/${encodeURIComponent(model.id)}`, { method: 'DELETE' });
+        await apiFetch(ROUTES.models.allowedDelete(encodeURIComponent(model.id)), { method: 'DELETE' });
         setAllowedIds(prev => { const s = new Set(prev); s.delete(model.id); return s; });
       } else {
-        await apiFetch('/admin/allowed-models', {
+        await apiFetch(ROUTES.models.allowed, {
           method: 'POST',
           body: JSON.stringify({ model_id: model.id, name: model.name,
                                  cost_stars: model.cost_stars, tags: model.tags }),
@@ -737,18 +735,19 @@ function OllamaManager({ localInfo, onRefresh }) {
   const [installedModels, setInstalledModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState(null);
   const [pulling,       setPulling]       = useState({});
-  const token = localStorage.getItem('token');
 
   const loadInstalledModels = useCallback(async () => {
     try {
-      const data = await apiFetch('/local/models');
+      const res = await apiFetch(ROUTES.local.models);
+      const data = res && res.ok ? await res.json() : {};
       setInstalledModels(data.models || []);
     } catch (e) { console.error(e); }
   }, []);
 
   const loadCatalog = useCallback(async () => {
     try {
-      const data = await apiFetch('/local/catalog');
+      const res = await apiFetch(ROUTES.local.catalog);
+      const data = res && res.ok ? await res.json() : [];
       setCatalog(Array.isArray(data) ? data : []);
     } catch (e) { console.error(e); }
   }, []);
@@ -761,10 +760,8 @@ function OllamaManager({ localInfo, onRefresh }) {
   const installModel = async (modelId) => {
     setPulling(prev => ({ ...prev, [modelId]: { progress: 0, downloaded_gb: 0, total_gb: 0 } }));
     try {
-      const token = api.auth.getToken();
-      const response = await fetch(`${API_BASE}/api/v1/local/pull`, {
+      const response = await apiFetch(ROUTES.local.pull, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ model: modelId }),
       });
       const reader  = response.body.getReader();
@@ -802,7 +799,7 @@ function OllamaManager({ localInfo, onRefresh }) {
   const uninstallModel = async (modelName) => {
     if (!window.confirm(`Désinstaller ${modelName} ?`)) return;
     try {
-      await apiFetch(`/local/models/${encodeURIComponent(modelName)}`, { method: 'DELETE' });
+      await apiFetch(ROUTES.local.delete(encodeURIComponent(modelName)), { method: 'DELETE' });
       setSelectedModel(prev => prev ? { ...prev, installed: false } : null);
       loadInstalledModels();
       loadCatalog();
@@ -958,10 +955,12 @@ function ModelStatusTab() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, inc] = await Promise.all([
-        apiFetch('/admin/models/status'),
-        apiFetch('/admin/incidents'),
+      const [sRes, incRes] = await Promise.all([
+        apiFetch(ROUTES.models.status),
+        apiFetch(ROUTES.admin.incidents),
       ]);
+      const s   = sRes   && sRes.ok   ? await sRes.json()   : [];
+      const inc = incRes && incRes.ok ? await incRes.json() : [];
       setStatus(Array.isArray(s) ? s : []);
       setIncidents(Array.isArray(inc) ? inc : []);
       if (s?.length) setCheckedAt(s[0]?.last_checked);
@@ -1120,7 +1119,8 @@ function LocalTab() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const loc = await apiFetch('/local/models').catch(() => null);
+      const res = await apiFetch(ROUTES.local.models).catch(() => null);
+      const loc = res && res.ok ? await res.json() : null;
       setLocalInfo(loc);
     } finally { setLoading(false); }
   }, []);
@@ -1150,7 +1150,10 @@ function DashboardTokensTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { setTokens(await apiFetch('/admin/dashboard/tokens')); }
+    try {
+      const res = await apiFetch(ROUTES.admin.dashboardTokens);
+      setTokens(res && res.ok ? await res.json() : []);
+    }
     catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, []);
@@ -1163,7 +1166,7 @@ function DashboardTokensTab() {
     try {
       const body = { label: label.trim() };
       if (expiry !== '0') body.expires_days = parseInt(expiry, 10);
-      await apiFetch('/admin/dashboard/token', {
+      await apiFetch(ROUTES.admin.dashboardToken, {
         method: 'POST',
         body: JSON.stringify(body),
       });
@@ -1176,7 +1179,7 @@ function DashboardTokensTab() {
   const handleRevoke = async (token) => {
     if (!window.confirm('Révoquer ce lien ? Il ne sera plus accessible.')) return;
     try {
-      await apiFetch(`/admin/dashboard/tokens/${token}`, { method: 'DELETE' });
+      await apiFetch(ROUTES.admin.dashboardTokenDelete(token), { method: 'DELETE' });
       load();
     } catch (e) { console.error(e); }
   };
@@ -1291,7 +1294,8 @@ function SettingsTab() {
   const [error,     setError]     = useState('');
 
   useEffect(() => {
-    apiFetch('/admin/settings')
+    apiFetch(ROUTES.admin.settings)
+      .then(res => res && res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res?.status}`)))
       .then(s => { setSettings(s); setForm({ default_model: s.default_model, default_chairman: s.default_chairman }); })
       .catch(e => setError(e.message));
   }, []);
@@ -1299,7 +1303,7 @@ function SettingsTab() {
   const handleSave = async () => {
     setSaving(true); setError(''); setSaved(false);
     try {
-      await apiFetch('/admin/settings', { method: 'PUT', body: JSON.stringify(form) });
+      await apiFetch(ROUTES.admin.settings, { method: 'PUT', body: JSON.stringify(form) });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) { setError(e.message); }
@@ -1360,8 +1364,8 @@ export default function AdminPanel({ onBack }) {
 
   const loadPipelines = useCallback(async () => {
     try {
-      const res  = await fetch(`${API_BASE}/api/v1/groups`);
-      const data = await res.json();
+      const res  = await apiFetch(ROUTES.groups.list);
+      const data = res && res.ok ? await res.json() : [];
       setPipelines(Array.isArray(data) ? data : []);
     } catch (e) { console.error(e); }
   }, []);
@@ -1399,7 +1403,8 @@ export default function AdminPanel({ onBack }) {
       {tab === 'pipelines' && <PipelinesTab pipelines={pipelines} onPipelinesChange={loadPipelines} />}
       {tab === 'perms'     && <PermissionsTab services={services} pipelines={pipelines} />}
       {tab === 'models'    && <ModelsTab />}
-      {tab === 'rag'       && <RAGTab />}
+      {/* RAGTab reste toujours monté pour éviter le double-backend react-dnd */}
+      <div style={{ display: tab === 'rag' ? 'flex' : 'none', flex: 1, flexDirection: 'column', overflow: 'hidden' }}><RAGTab /></div>
       {tab === 'mstatus'   && <ModelStatusTab />}
       {tab === 'local'     && <LocalTab />}
       {tab === 'tokens'    && <DashboardTokensTab />}

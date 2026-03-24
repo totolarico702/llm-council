@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../../api';
+import { ROUTES } from '../../api/routes.js';
 
 const ACCESS_LEVELS = ['read', 'write', 'admin', 'none'];
 
@@ -32,7 +33,8 @@ export default function RAGAclEditor({ folder }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch(`/rag/folders/${folderId}/acl`);
+      const res  = await apiFetch(ROUTES.rag.folderAcl(folderId));
+      const data = res && res.ok ? await res.json() : null;
       setAcl(data);
     } catch (e) {
       setError(e.message);
@@ -44,9 +46,10 @@ export default function RAGAclEditor({ folder }) {
   useEffect(() => { fetchAcl(); }, [folderId]);  // déclenché uniquement si l'id change
 
   useEffect(() => {
-    apiFetch('/admin/users').then(data => {
-      setUsers(Array.isArray(data) ? data : []);
-    }).catch(() => {});
+    apiFetch(ROUTES.admin.users)
+      .then(res => res && res.ok ? res.json() : [])
+      .then(data => { setUsers(Array.isArray(data) ? data : []); })
+      .catch(() => {});
   }, []);
 
   if (!folder) return null;
@@ -57,10 +60,11 @@ export default function RAGAclEditor({ folder }) {
   const handleToggleInherit = async () => {
     const updated = { ...acl, inherit: !acl.inherit };
     try {
-      const result = await apiFetch(`/rag/folders/${folderId}/acl`, {
+      const res    = await apiFetch(ROUTES.rag.folderAcl(folderId), {
         method: 'PATCH',
         body:   JSON.stringify(updated),
       });
+      const result = res && res.ok ? await res.json() : {};
       setAcl(result.acl || result);
     } catch (e) {
       alert(`Erreur : ${e.message}`);
@@ -72,16 +76,17 @@ export default function RAGAclEditor({ folder }) {
       // Pas d'id — fallback : PATCH sans cet élément
       const updated = { ...acl, exceptions: exceptions.filter(e => e !== exc) };
       try {
-        const result = await apiFetch(`/rag/folders/${folderId}/acl`, {
+        const res    = await apiFetch(ROUTES.rag.folderAcl(folderId), {
           method: 'PATCH',
           body:   JSON.stringify(updated),
         });
+        const result = res && res.ok ? await res.json() : {};
         setAcl(result.acl || result);
       } catch (e) { alert(`Erreur : ${e.message}`); }
       return;
     }
     try {
-      await apiFetch(`/rag/folders/${folderId}/acl/${exc.id}`, { method: 'DELETE' });
+      await apiFetch(ROUTES.rag.folderAclItem(folderId, exc.id), { method: 'DELETE' });
       fetchAcl();
     } catch (e) {
       alert(`Erreur : ${e.message}`);
@@ -100,10 +105,11 @@ export default function RAGAclEditor({ folder }) {
     };
     const updated = { ...acl, exceptions: [...exceptions, newExc] };
     try {
-      const result = await apiFetch(`/rag/folders/${folderId}/acl`, {
+      const res    = await apiFetch(ROUTES.rag.folderAcl(folderId), {
         method: 'PATCH',
         body:   JSON.stringify(updated),
       });
+      const result = res && res.ok ? await res.json() : {};
       setAcl(result.acl || result);
       setAddTarget('');
     } catch (e) {

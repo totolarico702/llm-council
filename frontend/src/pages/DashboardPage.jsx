@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../api';
+import { ROUTES } from '../api/routes';
 import './DashboardPage.css';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001';
 
 const CHART_COLORS = [
   '#3B82F6', '#22C55E', '#F59E0B', '#EF4444',
@@ -214,7 +214,7 @@ export default function DashboardPage({ token }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/v1/dashboard/${token}`)
+    apiFetch(ROUTES.dashboard(token))
       .then(r => {
         if (!r.ok) throw new Error(r.status === 404 ? 'Lien invalide' : r.status === 403 ? 'Lien expiré' : 'Erreur serveur');
         return r.json();

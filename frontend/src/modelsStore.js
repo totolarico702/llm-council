@@ -2,11 +2,10 @@
  * modelsStore.js — singleton partagé entre tous les composants.
  * Le fetch n'est fait qu'une seule fois, au premier appel.
  * Les composants s'abonnent via subscribe() et reçoivent la liste dès qu'elle est prête.
- * Le token Bearer est envoyé si disponible (admin reçoit la liste complète).
  */
 
-const API_BASE   = 'http://localhost:8001';
-const TOKEN_KEY  = 'llmc_token';
+import { apiFetch } from './api';
+import { ROUTES } from './api/routes';
 
 let models    = [];       // cache
 let loading   = false;
@@ -40,15 +39,12 @@ export function subscribe(fn) {
 
 /**
  * Déclencher le chargement (idempotent — ignoré si déjà en cours ou chargé).
- * Envoie le token Bearer si disponible pour recevoir la liste complète.
  */
 export async function loadModels() {
   if (loaded || loading) return;
   loading = true;
   try {
-    const token   = localStorage.getItem(TOKEN_KEY);
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const r = await fetch(`${API_BASE}/api/v1/models`, { headers });
+    const r = await apiFetch(ROUTES.models.list);
     const d = await r.json();
     models = d.models || [];
     loaded = true;

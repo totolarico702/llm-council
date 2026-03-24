@@ -4,15 +4,17 @@
  * Les composants s'abonnent via subscribe() et reçoivent la liste dès qu'elle est prête.
  */
 
-const API_BASE = import.meta.env?.VITE_API_BASE || 'http://localhost:8001';
+import { apiFetch } from '../api';
+import { ROUTES } from '../api/routes';
 
 let models = [];          // cache
 let loading = false;
 let loaded  = false;
 let listeners = [];       // callbacks abonnés
-let _getToken = () => null;  // injecté par App.jsx
 
-export function setTokenProvider(fn) { _getToken = fn; }
+// Stub de compatibilité — le token est désormais géré via cookie httpOnly
+// eslint-disable-next-line no-unused-vars
+export function setTokenProvider(_fn) {}
 
 function notify() {
   listeners.forEach(fn => fn(models));
@@ -47,10 +49,7 @@ export async function loadModels() {
   if (loaded || loading) return;
   loading = true;
   try {
-    const token = _getToken();
-    const r = await fetch(`${API_BASE}/api/v1/models`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
+    const r = await apiFetch(ROUTES.models.list);
     const d = await r.json();
     models = d.models || [];
     loaded = true;

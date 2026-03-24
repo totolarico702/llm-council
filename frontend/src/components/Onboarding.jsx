@@ -1,7 +1,7 @@
 import { useState } from 'react';
+import { apiFetch } from '../api';
+import { ROUTES } from '../api/routes';
 import './Onboarding.css';
-
-const API_BASE = 'http://localhost:8001';
 
 const IMAGE_MODELS = [
   { id: 'black-forest-labs/flux-1.1-pro', name: 'Flux 1.1 Pro', desc: 'Meilleure qualité, détails fins' },
@@ -32,9 +32,8 @@ export default function Onboarding({ onComplete }) {
     if (!apiKey.trim()) return;
     setKeyStatus('testing');
     try {
-      const r = await fetch(`${API_BASE}/api/v1/preferences/test-key`, {
+      const r = await apiFetch(ROUTES.preferences.testKey, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: apiKey.trim() }),
       });
       const data = await r.json();
@@ -51,9 +50,8 @@ export default function Onboarding({ onComplete }) {
 
   const finish = async () => {
     setSaving(true);
-    await fetch(`${API_BASE}/api/v1/preferences`, {
+    await apiFetch(ROUTES.preferences.save, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: username.trim(),
         openrouter_key: apiKey.trim(),

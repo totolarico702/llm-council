@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { auth, apiFetch } from '../api';
+import { apiFetch } from '../api';
+import { ROUTES } from '../api/routes.js';
 import ReactMarkdown from 'react-markdown';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
@@ -220,14 +221,11 @@ export default function ChatInterface({
       const formData = new FormData();
       formData.append('file', file);
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001';
-        const token = auth.getToken();
-        const response = await fetch(`${API_BASE}/api/v1/upload`, {
+        const response = await apiFetch(ROUTES.upload, {
           method: 'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: formData,
         });
-        if (!response.ok) throw new Error('Upload failed');
+        if (!response || !response.ok) throw new Error('Upload failed');
         const data = await response.json();
         setAttachments((prev) => [
           ...prev,
@@ -277,10 +275,11 @@ export default function ChatInterface({
     let mentionContext = null;
     if (mentions.length > 0) {
       try {
-        const data = await apiFetch('/rag/resolve-mentions', {
+        const res = await apiFetch(ROUTES.rag.resolveMentions, {
           method: 'POST',
           body:   JSON.stringify({ mentions }),
         });
+        const data = res && res.ok ? await res.json() : {};
         const resolved = data.resolved || {};
         const parts = Object.entries(resolved).map(
           ([name, content]) => `[Document: ${name}]\n${content}\n[/Document]`
