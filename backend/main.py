@@ -138,7 +138,7 @@ app.add_middleware(SlowAPIMiddleware)
 from fastapi import APIRouter as _APIRouter
 api_v1 = _APIRouter(prefix="/api/v1")
 
-app.include_router(fs_router, prefix="/api/v1")
+api_v1.include_router(fs_router)
 
 # ── CORS — doit être ajouté AVANT toute route ─────────────────────────────────
 _PROD = os.getenv("PRODUCTION", "").lower() in ("1", "true", "yes")
@@ -1906,9 +1906,9 @@ async def export_project(project_id: str, body: dict,
     return StreamingResponse(buf, media_type="application/zip",
                              headers={"Content-Disposition": "attachment; filename=export.zip"})
 
+# Enregistrer toutes les routes v1
+app.include_router(api_v1)
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
-
-# Enregistrer toutes les routes v1
-app.include_router(api_v1)
