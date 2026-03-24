@@ -2,86 +2,241 @@
 
 ![llmcouncil](header.jpg)
 
-The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to review and rank each other's work, and finally a Chairman LLM produces the final response.
+> Orchestrateur multi-LLM intranet entreprise — délibération à 3 stages, RAG organisationnel, pipelines DAG configurables.
 
-In a bit more detail, here is what happens when you submit a query:
+---
 
-1. **Stage 1: First opinions**. The user query is given to all LLMs individually, and the responses are collected. The individual responses are shown in a "tab view", so that the user can inspect them all one by one.
-2. **Stage 2: Review**. Each individual LLM is given the responses of the other LLMs. Under the hood, the LLM identities are anonymized so that the LLM can't play favorites when judging their outputs. The LLM is asked to rank them in accuracy and insight.
-3. **Stage 3: Final response**. The designated Chairman of the LLM Council takes all of the model's responses and compiles them into a single final answer that is presented to the user.
+## Concept
 
-## Vibe Code Alert
+LLM Council remplace le chatbot mono-LLM par un **conseil de modèles** qui délibèrent ensemble avant de vous répondre :
 
-This project was 99% vibe coded as a fun Saturday hack because I wanted to explore and evaluate a number of LLMs side by side in the process of [reading books together with LLMs](https://x.com/karpathy/status/1990577951671509438). It's nice and useful to see multiple responses side by side, and also the cross-opinions of all LLMs on each other's outputs. I'm not going to support it in any way, it's provided here as is for other people's inspiration and I don't intend to improve it. Code is ephemeral now and libraries are over, ask your LLM to change it in whatever way you like.
+1. **Stage 1 — Premières opinions** : votre question est envoyée simultanément à plusieurs LLMs via OpenRouter. Chaque réponse est affichée dans un onglet dédié.
+2. **Stage 2 — Revue croisée** : chaque LLM évalue anonymement les réponses des autres et les classe par pertinence et qualité. L'anonymisation évite les biais de favoritisme entre modèles.
+3. **Stage 3 — Synthèse finale** : le Chairman LLM (configurable) compile toutes les réponses et les classements en une réponse finale consolidée.
 
-## Setup
+Le tout dans une interface web locale qui ressemble à un ChatGPT d'entreprise, avec gestion des utilisateurs, des droits, et de la mémoire organisationnelle (RAG).
 
-### 1. Install Dependencies
+---
 
-The project uses [uv](https://docs.astral.sh/uv/) for project management.
+## Fonctionnalités V1
 
-**Backend:**
+### Délibération multi-LLM
+- Stage 1 / 2 / 3 avec anonymisation des modèles en Stage 2
+- Chairman configurable par pipeline
+- Fallback automatique si un modèle est indisponible
+- Trace d'exécution DAG en temps réel
+
+### Pipelines DAG
+- Éditeur visuel de pipelines (PipelineEditor)
+- Nœuds configurables : LLM, RAG Search, outils
+- Toggle cloud (OpenRouter) / local (Ollama) par nœud
+- Timeout global 300s, timeout par nœud 30s
+
+### RAG — Mémoire organisationnelle
+- Indexation de documents (PDF, DOCX, TXT, MD) via LanceDB
+- Arborescence de dossiers avec permissions ACL héritées par service
+- Audit log 90 jours (créations, suppressions, uploads, modifications ACL)
+- Injection automatique des documents @mentionnés dans le prompt
+- Panel RAAD (sidebar droite) avec recherche full-text et drag & drop
+
+### Gestion utilisateurs & droits
+- Authentification JWT (httpOnly cookie, refresh token 7 jours)
+- Isolation complète des conversations par utilisateur
+- Permissions granulaires : `rag_read`, `rag_write`, `admin`
+- Rate limiting sur le login (5 requêtes/min par IP)
+
+### Modèles locaux
+- Intégration Ollama (mistral:latest par défaut)
+- Gestionnaire de modèles Ollama dans l'AdminPanel
+- Toggle cloud/local par nœud dans le PipelineEditor
+
+### Interface
+- Dashboard Comex (lien partageable sans authentification)
+- Panel état modèles temps réel (🟢🟡🔴)
+- Explorateur PC intégré pour upload vers le RAG
+- Support multilingue (français forcé par défaut)
+
+---
+
+## Stack technique
+
+| Composant | Technologie |
+|-----------|-------------|
+| Backend | FastAPI (Python 3.10+), uv |
+| Frontend | React 18 + Vite |
+| Base de données | TinyDB (métadonnées) + LanceDB (vecteurs RAG) |
+| LLM routing | OpenRouter API |
+| LLM local | Ollama |
+| Auth | JWT httpOnly cookie + bcrypt |
+| Rate limiting | slowapi |
+| Logging | structlog |
+| Tests | Pytest + pytest-asyncio |
+
+---
+
+## Installation
+
+### Prérequis
+
+- Python 3.10+
+- Node.js 18+
+- [uv](https://docs.astral.sh/uv/) pour la gestion des dépendances Python
+- [Ollama](https://ollama.ai/) (optionnel, pour les modèles locaux)
+
+### 1. Cloner le projet
+
 ```bash
-uv sync
+git clone https://github.com/totolarico702/llm-council.git
+cd llm-council
 ```
 
-**Frontend:**
+### 2. Configurer l'environnement
+
+```bash
+cp .env.example .env
+```
+
+Éditer `.env` :
+
+```env
+OPENROUTER_API_KEY=sk-or-v1-...
+JWT_SECRET=votre-secret-aleatoire-long
+PRODUCTION=0
+FS_BROWSER_ROOT=C:\Users\VotreNom
+RAG_UPLOAD_MAX_MB=100
+RAG_AUDIT_RETENTION_DAYS=90
+```
+
+### 3. Installer les dépendances
+
+**Backend :**
+```bash
+uv sync
+uv add slowapi structlog
+```
+
+**Frontend :**
 ```bash
 cd frontend
 npm install
 cd ..
 ```
 
-### 2. Configure API Key
-
-Create a `.env` file in the project root:
+### 4. Lancer l'application
 
 ```bash
-OPENROUTER_API_KEY=sk-or-v1-...
-```
+# Windows
+start.bat
 
-Get your API key at [openrouter.ai](https://openrouter.ai/). Make sure to purchase the credits you need, or sign up for automatic top up.
-
-### 3. Configure Models (Optional)
-
-Edit `backend/config.py` to customize the council:
-
-```python
-COUNCIL_MODELS = [
-    "openai/gpt-5.1",
-    "google/gemini-3-pro-preview",
-    "anthropic/claude-sonnet-4.5",
-    "x-ai/grok-4",
-]
-
-CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
-```
-
-## Running the Application
-
-**Option 1: Use the start script**
-```bash
+# Linux/Mac
 ./start.sh
 ```
 
-**Option 2: Run manually**
+Ou manuellement :
 
-Terminal 1 (Backend):
 ```bash
+# Terminal 1 — Backend (port 8001)
 uv run python -m backend.main
+
+# Terminal 2 — Frontend (port 5173)
+cd frontend && npm run dev
 ```
 
-Terminal 2 (Frontend):
+Ouvrir [http://localhost:5173](http://localhost:5173)
+
+**Identifiants par défaut :** `admin` / `admin`
+⚠️ Vous serez forcé de changer le mot de passe au premier login.
+
+---
+
+## Configuration des modèles
+
+Éditer `backend/config.py` :
+
+```python
+# Modèles du conseil
+COUNCIL_MODELS = [
+    "mistralai/mistral-medium-3",      # Modèle par défaut
+    "anthropic/claude-sonnet-4-5",
+    "openai/gpt-4o",
+    "google/gemini-2.0-flash-001",
+]
+
+# Chairman (synthèse finale)
+CHAIRMAN_MODEL = "mistralai/mistral-medium-3"
+
+# Fallback chain (cloud)
+FALLBACK_MODELS = [
+    "mistralai/mistral-medium-3",
+    "anthropic/claude-haiku-4-5",
+    "openai/gpt-4o-mini",
+]
+```
+
+---
+
+## Tests
+
 ```bash
-cd frontend
-npm run dev
+uv run pytest backend/tests/ -v --cov=backend --cov-report=term-missing
 ```
 
-Then open http://localhost:5173 in your browser.
+---
 
-## Tech Stack
+## Structure du projet
 
-- **Backend:** FastAPI (Python 3.10+), async httpx, OpenRouter API
-- **Frontend:** React + Vite, react-markdown for rendering
-- **Storage:** JSON files in `data/conversations/`
-- **Package Management:** uv for Python, npm for JavaScript
+```
+llm-council/
+├── backend/
+│   ├── main.py              # FastAPI app, routes /api/v1/
+│   ├── db.py                # Auth, users, TinyDB
+│   ├── council.py           # Logique délibération 3 stages
+│   ├── dag_engine.py        # Exécuteur de pipelines DAG
+│   ├── rag_store.py         # Indexation LanceDB
+│   ├── rag_folders.py       # Arborescence dossiers + ACL
+│   ├── rag_audit.py         # Audit log
+│   ├── fs_browser.py        # Explorateur filesystem
+│   ├── errors.py            # Format d'erreur uniforme
+│   ├── logging_config.py    # structlog
+│   └── tests/               # Pytest — auth, users, dag, rag
+├── frontend/
+│   └── src/
+│       ├── App.jsx
+│       ├── api.js           # Client HTTP, cookies
+│       └── components/
+│           ├── ChatInterface.jsx
+│           ├── PipelineEditor.jsx
+│           ├── RAADPanel.jsx
+│           ├── AdminPanel.jsx
+│           └── AdminPanel/
+│               └── RAGTab.jsx   # Gestionnaire RAG
+├── data/                    # Ignoré par git
+│   ├── db.json              # TinyDB
+│   └── lancedb/             # Index vectoriel
+├── docs/briefs/             # Briefs de développement
+├── CLAUDE.md                # Mémoire partagée agents
+├── .env.example
+└── start.bat / start.sh
+```
+
+---
+
+## Roadmap
+
+### V2 (en cours)
+- Grammaire cognitive `.cog` — format de pipeline reproductible
+- Mode Caféine — validation humaine post-Chairman
+- Scoring qualité LLM par réponse
+- Simulation de coûts par pipeline
+
+### V3
+- Multi-agents avec orchestration Claude Code
+- Open-core / publication
+- CI/CD GitHub Actions
+- Docker Compose
+
+---
+
+## Licence
+
+Projet privé — usage intranet entreprise.
