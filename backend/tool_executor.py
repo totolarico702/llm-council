@@ -177,11 +177,86 @@ async def _exec_rag_search(node: Dict[str, Any], context: str,
         return f"[rag_search error] {e}"
 
 
+async def _exec_fact_check(node: Dict[str, Any], context: str,
+                           user_query: str) -> str:
+    """
+    Envoie le texte précédent à un LLM dédié pour vérification factuelle.
+    Annote chaque affirmation avec ✅ vérifié / ⚠️ douteux / ❌ incorrect.
+    """
+    try:
+        from .openrouter import query_model
+
+        text_to_check = context or user_query
+        prompt = (
+            "Tu es un fact-checker expert. Analyse le texte suivant et :\n"
+            "1. Identifie les affirmations vérifiables\n"
+            "2. Note leur niveau de certitude (✅ vérifié / ⚠️ douteux / ❌ incorrect)\n"
+            "3. Explique brièvement chaque annotation\n\n"
+            f"Texte à vérifier :\n{text_to_check}"
+        )
+        model    = node.get("model") or "mistralai/mistral-medium-3"
+        messages = [
+            {"role": "system", "content": "Tu es un fact-checker rigoureux et impartial."},
+            {"role": "user",   "content": prompt},
+        ]
+        response = await query_model(model, messages)
+        if response and response.get("content"):
+            return f"[fact_check]\n\n{response['content']}"
+        return "[fact_check] Aucune réponse du modèle"
+    except Exception as e:
+        return f"[fact_check error] {e}"
+
+
+async def _exec_mcp(node: Dict[str, Any], context: str,
+                    user_query: str) -> str:
+    """
+    Appel d'un serveur MCP externe via HTTP POST.
+    Supporte les variables dynamiques {{user_input}} et {{previous_output}}.
+    """
+    try:
+        import httpx
+
+        server_url = node.get("server_url", "")
+        tool_name  = node.get("tool_name", "")
+        raw_params = node.get("params", {})
+        auth       = node.get("auth", {})
+
+        if not server_url or not tool_name:
+            return "[mcp error] server_url et tool_name sont requis"
+
+        params: Dict[str, Any] = {}
+        for key, value in raw_params.items():
+            if isinstance(value, str):
+                value = value.replace("{{user_input}}", user_query)
+                value = value.replace("{{previous_output}}", context)
+            params[key] = value
+
+        headers: Dict[str, str] = {}
+        if auth.get("type") == "bearer":
+            headers["Authorization"] = f"Bearer {auth.get('token', '')}"
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                f"{server_url}/tools/{tool_name}",
+                json=params,
+                headers=headers,
+            )
+            response.raise_for_status()
+            result = response.json()
+
+        return f"[mcp:{tool_name}]\n\n{json.dumps(result, ensure_ascii=False, indent=2)}"
+
+    except Exception as e:
+        return f"[mcp error] {e}"
+
+
 # ── Dispatcher principal ──────────────────────────────────────────────────────
 
 EXECUTORS = {
     "web_search":  _exec_web_search,
     "rag_search":  _exec_rag_search,
+    "fact_check":  _exec_fact_check,
+    "mcp":         _exec_mcp,
     "code_exec":   _exec_code_exec,
     "file_read":   _exec_file_read,
     "git":         _exec_git,
@@ -206,7 +281,7 @@ async def execute_tool_node(
     executor = EXECUTORS.get(tool_type, _exec_custom)
 
     # Outils nécessitant user_query séparément
-    if tool_type in ("web_search", "rag_search"):
+    if tool_type in ("web_search", "rag_search", "fact_check", "mcp"):
         return await executor(node, context, user_query)
     else:
         return await executor(node, context)

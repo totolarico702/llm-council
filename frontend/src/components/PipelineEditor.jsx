@@ -185,12 +185,6 @@ function NodePanelTool({ node, onChange, onDelete, onClose }) {
             placeholder="Description de ce node…" />
         </div>
 
-        <div className="pe-np-separator" />
-        <div className="pe-np-hint">
-          ⚠ Ce node est sauvegardé dans le graphe. L'exécution réelle des outils
-          sera activée dans une version ultérieure du moteur.
-        </div>
-
         <button className="pe-np-delete" onClick={onDelete}>🗑 Supprimer ce node</button>
       </div>
     </div>
