@@ -18,6 +18,92 @@ Le tout dans une interface web locale qui ressemble à un ChatGPT d'entreprise, 
 
 ---
 
+## Déploiement rapide
+
+Un script de déploiement automatique est fourni pour Windows et Linux/Mac. Il installe toutes les dépendances, configure l'environnement et vérifie que tout fonctionne avant le premier démarrage.
+
+### Windows
+
+```bat
+deploy.bat
+```
+
+### Linux / Mac
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+Le script effectue automatiquement :
+- Vérification des prérequis (Python, uv, Node.js)
+- Création du fichier `.env` depuis `.env.example`
+- Installation des dépendances Python (`uv sync`)
+- Installation des dépendances Node.js (`npm install`)
+- Détection et configuration d'Ollama si installé
+- Vérification du backend (chargement + comptage des routes)
+- Exécution de la suite de tests
+
+Une fois le déploiement terminé, lancer l'application avec :
+
+```bat
+# Windows
+start.bat
+
+# Linux/Mac
+./start.sh
+```
+
+Puis ouvrir [http://localhost:5173](http://localhost:5173)
+
+**Identifiants par défaut :** `admin` / `admin`
+⚠️ Vous serez forcé de changer le mot de passe au premier login.
+
+---
+
+## Prérequis
+
+| Outil | Version minimale | Lien |
+|-------|-----------------|------|
+| Python | 3.10+ | [python.org](https://www.python.org/downloads/) |
+| uv | latest | [astral.sh/uv](https://docs.astral.sh/uv/) |
+| Node.js | 18+ | [nodejs.org](https://nodejs.org/) |
+| Ollama | any | [ollama.ai](https://ollama.ai/) *(optionnel — modèles locaux)* |
+
+---
+
+## Configuration
+
+### Clé API OpenRouter
+
+Créer un compte sur [openrouter.ai](https://openrouter.ai/) et renseigner la clé dans `.env` :
+
+```env
+OPENROUTER_API_KEY=sk-or-v1-...
+JWT_SECRET=votre-secret-aleatoire-long
+PRODUCTION=0
+FS_BROWSER_ROOT=C:\Users\VotreNom
+RAG_UPLOAD_MAX_MB=100
+RAG_AUDIT_RETENTION_DAYS=90
+```
+
+### Modèles du conseil
+
+Éditer `backend/config.py` :
+
+```python
+COUNCIL_MODELS = [
+    "mistralai/mistral-medium-3",
+    "anthropic/claude-sonnet-4-5",
+    "openai/gpt-4o",
+    "google/gemini-2.0-flash-001",
+]
+
+CHAIRMAN_MODEL = "mistralai/mistral-medium-3"
+```
+
+---
+
 ## Fonctionnalités V1
 
 ### Délibération multi-LLM
@@ -38,6 +124,7 @@ Le tout dans une interface web locale qui ressemble à un ChatGPT d'entreprise, 
 - Audit log 90 jours (créations, suppressions, uploads, modifications ACL)
 - Injection automatique des documents @mentionnés dans le prompt
 - Panel RAAD (sidebar droite) avec recherche full-text et drag & drop
+- Explorateur PC intégré pour upload direct vers le RAG
 
 ### Gestion utilisateurs & droits
 - Authentification JWT (httpOnly cookie, refresh token 7 jours)
@@ -53,7 +140,6 @@ Le tout dans une interface web locale qui ressemble à un ChatGPT d'entreprise, 
 ### Interface
 - Dashboard Comex (lien partageable sans authentification)
 - Panel état modèles temps réel (🟢🟡🔴)
-- Explorateur PC intégré pour upload vers le RAG
 - Support multilingue (français forcé par défaut)
 
 ---
@@ -74,107 +160,6 @@ Le tout dans une interface web locale qui ressemble à un ChatGPT d'entreprise, 
 
 ---
 
-## Installation
-
-### Prérequis
-
-- Python 3.10+
-- Node.js 18+
-- [uv](https://docs.astral.sh/uv/) pour la gestion des dépendances Python
-- [Ollama](https://ollama.ai/) (optionnel, pour les modèles locaux)
-
-### 1. Cloner le projet
-
-```bash
-git clone https://github.com/totolarico702/llm-council.git
-cd llm-council
-```
-
-### 2. Configurer l'environnement
-
-```bash
-cp .env.example .env
-```
-
-Éditer `.env` :
-
-```env
-OPENROUTER_API_KEY=sk-or-v1-...
-JWT_SECRET=votre-secret-aleatoire-long
-PRODUCTION=0
-FS_BROWSER_ROOT=C:\Users\VotreNom
-RAG_UPLOAD_MAX_MB=100
-RAG_AUDIT_RETENTION_DAYS=90
-```
-
-### 3. Installer les dépendances
-
-**Backend :**
-```bash
-uv sync
-uv add slowapi structlog
-```
-
-**Frontend :**
-```bash
-cd frontend
-npm install
-cd ..
-```
-
-### 4. Lancer l'application
-
-```bash
-# Windows
-start.bat
-
-# Linux/Mac
-./start.sh
-```
-
-Ou manuellement :
-
-```bash
-# Terminal 1 — Backend (port 8001)
-uv run python -m backend.main
-
-# Terminal 2 — Frontend (port 5173)
-cd frontend && npm run dev
-```
-
-Ouvrir [http://localhost:5173](http://localhost:5173)
-
-**Identifiants par défaut :** `admin` / `admin`
-⚠️ Vous serez forcé de changer le mot de passe au premier login.
-
----
-
-## Configuration des modèles
-
-Éditer `backend/config.py` :
-
-```python
-# Modèles du conseil
-COUNCIL_MODELS = [
-    "mistralai/mistral-medium-3",      # Modèle par défaut
-    "anthropic/claude-sonnet-4-5",
-    "openai/gpt-4o",
-    "google/gemini-2.0-flash-001",
-]
-
-# Chairman (synthèse finale)
-CHAIRMAN_MODEL = "mistralai/mistral-medium-3"
-
-# Fallback chain (cloud)
-FALLBACK_MODELS = [
-    "mistralai/mistral-medium-3",
-    "anthropic/claude-haiku-4-5",
-    "openai/gpt-4o-mini",
-]
-```
-
----
-
 ## Tests
 
 ```bash
@@ -187,36 +172,38 @@ uv run pytest backend/tests/ -v --cov=backend --cov-report=term-missing
 
 ```
 llm-council/
+├── deploy.bat           # Script de déploiement Windows
+├── deploy.sh            # Script de déploiement Linux/Mac
+├── start.bat            # Démarrage Windows
+├── start.sh             # Démarrage Linux/Mac
 ├── backend/
-│   ├── main.py              # FastAPI app, routes /api/v1/
-│   ├── db.py                # Auth, users, TinyDB
-│   ├── council.py           # Logique délibération 3 stages
-│   ├── dag_engine.py        # Exécuteur de pipelines DAG
-│   ├── rag_store.py         # Indexation LanceDB
-│   ├── rag_folders.py       # Arborescence dossiers + ACL
-│   ├── rag_audit.py         # Audit log
-│   ├── fs_browser.py        # Explorateur filesystem
-│   ├── errors.py            # Format d'erreur uniforme
-│   ├── logging_config.py    # structlog
-│   └── tests/               # Pytest — auth, users, dag, rag
+│   ├── main.py          # FastAPI app, routes /api/v1/
+│   ├── db.py            # Auth, users, TinyDB
+│   ├── council.py       # Logique délibération 3 stages
+│   ├── dag_engine.py    # Exécuteur de pipelines DAG
+│   ├── rag_store.py     # Indexation LanceDB
+│   ├── rag_folders.py   # Arborescence dossiers + ACL
+│   ├── rag_audit.py     # Audit log
+│   ├── fs_browser.py    # Explorateur filesystem
+│   ├── errors.py        # Format d'erreur uniforme
+│   ├── logging_config.py
+│   └── tests/           # Pytest — auth, users, dag, rag
 ├── frontend/
 │   └── src/
 │       ├── App.jsx
-│       ├── api.js           # Client HTTP, cookies
+│       ├── api.js
 │       └── components/
 │           ├── ChatInterface.jsx
 │           ├── PipelineEditor.jsx
 │           ├── RAADPanel.jsx
-│           ├── AdminPanel.jsx
 │           └── AdminPanel/
-│               └── RAGTab.jsx   # Gestionnaire RAG
-├── data/                    # Ignoré par git
-│   ├── db.json              # TinyDB
-│   └── lancedb/             # Index vectoriel
-├── docs/briefs/             # Briefs de développement
-├── CLAUDE.md                # Mémoire partagée agents
-├── .env.example
-└── start.bat / start.sh
+│               └── RAGTab.jsx
+├── data/                # Ignoré par git
+│   ├── db.json          # TinyDB
+│   └── lancedb/         # Index vectoriel
+├── docs/briefs/         # Briefs de développement
+├── CLAUDE.md            # Mémoire partagée agents
+└── .env.example
 ```
 
 ---
