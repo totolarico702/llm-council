@@ -200,12 +200,7 @@ function NodePanelTool({ node, onChange, onDelete, onClose }) {
 function NodePanel({ node, availableModels, defaultModel, localModels, ollamaAvailable, onChange, onDelete, onClose }) {
   if (node?.node_type === 'tool')
     return <NodePanelTool node={node} onChange={onChange} onDelete={onDelete} onClose={onClose} />;
-  if (!node) return (
-    <div className="pe-np-empty">
-      <div className="pe-np-empty-icon">⬡</div>
-      <p>Clique sur un nœud<br/>pour l'éditer</p>
-    </div>
-  );
+  if (!node) return null;
 
   const isLocal = (node.model || '').startsWith('ollama/') || (node.model || '').startsWith('local/');
 
@@ -1085,27 +1080,57 @@ export default function PipelineEditor({ group, onSave, onClose }) {
             )}
           </div>
 
-          {/* Panneau latéral */}
-          <div className="pe-side" onClick={e => e.stopPropagation()}>
-            <NodePanel
-              node={selectedNode}
-              availableModels={availableModels}
-              defaultModel={defaultModel}
-              localModels={localModels}
-              ollamaAvailable={ollamaAvailable}
-              onChange={updateNode}
-              onDelete={deleteSelected}
-              onClose={() => setSelectedId(null)}
-            />
-          </div>
+          {/* Panneau latéral — visible seulement si un nœud est sélectionné */}
+          {selectedNode && (
+            <div className="pe-side" onClick={e => e.stopPropagation()}>
+              <NodePanel
+                node={selectedNode}
+                availableModels={availableModels}
+                defaultModel={defaultModel}
+                localModels={localModels}
+                ollamaAvailable={ollamaAvailable}
+                onChange={updateNode}
+                onDelete={deleteSelected}
+                onClose={() => setSelectedId(null)}
+              />
+            </div>
+          )}
 
           {/* Assistant sidebar */}
           {showAssistant && (
             <PipelineAssistant
               currentPipeline={{ nodes, edges }}
               onApply={(cog) => {
-                setNodes(cog.nodes || [])
-                setEdges(cog.edges || [])
+                // Convertit les nœuds .cog (type/label/system_prompt) en format interne (role/node_type/x/y)
+                const converted = (cog.nodes || []).map((n, i) => {
+                  const pos = { x: n.x ?? defaultPos(i).x, y: n.y ?? defaultPos(i).y }
+                  if (n.type === 'input') {
+                    return { id: n.id, role: 'reader', model: n.model || '', _source: true, inputs: ['user_prompt'], web_search: 'none', role_prompt: n.system_prompt || '', ...pos }
+                  }
+                  if (n.type === 'output') {
+                    return { id: n.id, role: 'chairman', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || '', ...pos }
+                  }
+                  if (n.type === 'llm' || n.type === 'llm_local') {
+                    return { id: n.id, role: 'reader', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || '', ...pos }
+                  }
+                  if (n.type === 'rag_search') {
+                    return { id: n.id, node_type: 'tool', tool_type: 'rag_search', inputs: [], folder_id: n.folder_id || '', limit: n.limit ?? 5, score_threshold: n.score_threshold ?? 0.3, ...pos }
+                  }
+                  if (n.type === 'tool') {
+                    return { id: n.id, node_type: 'tool', tool_type: n.tool_type || 'web_search', inputs: [], ...pos }
+                  }
+                  if (n.type === 'merge') {
+                    return { id: n.id, role: 'synthesizer', model: n.model || '', inputs: [], web_search: 'none', role_prompt: '', ...pos }
+                  }
+                  if (n.type === 'condition' || n.type === 'mcp') {
+                    return { id: n.id, role: 'custom', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || n.condition || '', ...pos }
+                  }
+                  return { id: n.id, role: 'custom', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || '', ...pos }
+                })
+                const convertedEdges = (cog.edges || []).map(e => ({ from: e.from, to: e.to }))
+                setNodes(converted)
+                setEdges(convertedEdges)
+                setDirty(true)
               }}
               onClose={() => setShowAssistant(false)}
             />
