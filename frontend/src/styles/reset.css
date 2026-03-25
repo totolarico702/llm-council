@@ -14,6 +14,9 @@ html {
 body {
   min-height: 100vh;
   line-height: 1.5;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-main);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-synthesis: none;
@@ -42,6 +45,21 @@ button {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* ── Scrollbar — fine et dorée partout ─────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb {
+  background: var(--color-gold-dim);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gold-dim) transparent;
 }
 
 ul, ol {

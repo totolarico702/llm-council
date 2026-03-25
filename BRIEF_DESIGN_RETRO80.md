@@ -408,6 +408,119 @@ input:focus, textarea:focus {
 
 ---
 
+## Partie 2b — Thème NeXT Anthracite (mode nuit)
+
+Référence : NeXT Computer 1988 — cube noir mat, gris anthracite, sobre et premium.
+
+```css
+/* frontend/src/styles/themes/next-dark.css */
+/* LLM Council — Thème NeXT Anthracite 1988 */
+
+[data-theme="next-dark"] {
+  /* Fond principal — noir mat NeXT */
+  --color-bg:             #141414;
+
+  /* Surfaces — nuances anthracite */
+  --color-surface:        #1e1e1e;
+  --color-surface-2:      #242424;
+  --color-surface-raised: #2a2a2a;
+  --color-surface-inset:  #111111;
+
+  /* Bordures */
+  --color-border:         #3a3a3a;
+  --color-border-dark:    #0a0a0a;
+  --color-border-light:   #4a4a4a;
+
+  /* Texte */
+  --color-text:           #e0ddd6;  /* blanc cassé chaud */
+  --color-text-muted:     #888880;
+  --color-text-disabled:  #444440;
+
+  /* Accents — même orange ambre fil conducteur */
+  --color-accent:         #c8760a;
+  --color-accent-hover:   #e08810;
+  --color-accent-amber:   #ffb000;
+  --color-phosphore:      #33cc44;
+  --color-phosphore-dim:  #1a6622;
+  --color-danger:         #cc2200;
+  --color-success:        #33cc44;
+
+  /* Ombres portées dures — version sombre */
+  --shadow-raised:
+    inset 1px 1px 0px var(--color-border-light),
+    inset -1px -1px 0px var(--color-border-dark),
+    2px 2px 0px #000000;
+
+  --shadow-inset:
+    inset 1px 1px 0px #000000,
+    inset -1px -1px 0px var(--color-border-light);
+
+  --shadow-window:
+    3px 3px 0px #000000,
+    4px 4px 0px rgba(0,0,0,0.4);
+}
+```
+
+### Switch thème dans l'UI
+
+Ajouter un toggle dans la sidebar en bas (à côté du bouton déconnexion) :
+
+```jsx
+// Composant ThemeToggle
+const ThemeToggle = () => {
+  const [theme, setTheme] = useState(
+    localStorage.getItem('llmc-theme') || 'atari'
+  )
+
+  const toggle = () => {
+    const next = theme === 'atari' ? 'next-dark' : 'atari'
+    setTheme(next)
+    document.documentElement.setAttribute('data-theme', next)
+    localStorage.setItem('llmc-theme', next)
+  }
+
+  return (
+    <button onClick={toggle} className="theme-toggle">
+      {theme === 'atari' ? '◐ ATARI' : '● NeXT'}
+    </button>
+  )
+}
+```
+
+Le thème est persisté en `localStorage` et appliqué au chargement via `data-theme` sur `<html>`.
+
+```javascript
+// Dans main.jsx — appliquer le thème sauvegardé au démarrage
+const savedTheme = localStorage.getItem('llmc-theme') || 'atari'
+document.documentElement.setAttribute('data-theme', savedTheme)
+```
+
+### CSS du toggle
+
+```css
+.theme-toggle {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: var(--color-surface-inset);
+  color: var(--color-text-muted);
+  border: none;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-inset);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.theme-toggle:hover {
+  color: var(--color-accent);
+}
+```
+
+---
+
 ## Partie 3 — Micro-interactions
 
 ```css
@@ -506,3 +619,7 @@ button:active {
 - [ ] Micro-interactions : curseur phosphore clignotant dans le chat
 - [ ] Canvas pipeline : grille papier millimétré + connexions orange ambre
 - [ ] Login page : style terminal CRT complet
+- [ ] Thème NeXT anthracite appliqué via `[data-theme="next-dark"]`
+- [ ] Switch `◐ ATARI / ● NeXT` en bas de sidebar
+- [ ] Thème persisté en localStorage et restauré au rechargement
+- [ ] Les deux thèmes partagent la même typo et les mêmes ombres skeuomorphes

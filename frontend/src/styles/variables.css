@@ -1,89 +1,153 @@
-/* ── LLM Council — Design tokens ────────────────────────────────────────────
-   Source unique de vérité pour toutes les couleurs, typos, espacements.
-   Pour créer un nouveau thème : surcharger ces variables dans themes/*.css
-   ────────────────────────────────────────────────────────────────────────── */
+/* frontend/src/styles/variables.css */
+/* LLM Council — Salle de Conseil — Édition de Luxe Sobre */
+/* Référence : The Economist, Bloomberg Terminal, rapport annuel UBS, Financial Times */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
 
 :root {
-  /* ── Couleurs principales ─────────────────────────────────────────────── */
-  --color-primary:        #6366f1;
-  --color-primary-hover:  #4f46e5;
-  --color-accent:         #22d3ee;
-  --color-success:        #22c55e;
-  --color-warning:        #f59e0b;
-  --color-danger:         #ef4444;
+  /* ── Palette principale ─────────────────────────── */
 
-  /* ── Backgrounds ──────────────────────────────────────────────────────── */
-  --color-bg:             #0f1117;
-  --color-surface:        #1a1d2e;
-  --color-surface-2:      #232640;
-  --color-border:         #2e3155;
+  /* Noirs profonds — jamais noir pur */
+  --color-bg:             #0a0a0a;
+  --color-surface:        #111111;
+  --color-surface-2:      #181818;
+  --color-surface-raised: #1f1f1f;
+  --color-surface-inset:  #080808;
 
-  /* ── Texte ────────────────────────────────────────────────────────────── */
-  --color-text:           #e2e8f0;
-  --color-text-muted:     #94a3b8;
-  --color-text-disabled:  #4b5563;
+  /* Bordures — subtiles, pas agressives */
+  --color-border:         #2a2a2a;
+  --color-border-muted:   #1e1e1e;
+  --color-border-accent:  #b8941f;  /* filet doré */
 
-  /* ── Typography ───────────────────────────────────────────────────────── */
-  --font-main:            'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono:            'JetBrains Mono', 'Fira Code', monospace;
-  --font-size-sm:         12px;
-  --font-size-base:       14px;
-  --font-size-lg:         16px;
-  --font-size-xl:         20px;
+  /* Texte */
+  --color-text:           #f0ede6;  /* blanc cassé chaud */
+  --color-text-muted:     #7a7570;
+  --color-text-disabled:  #3a3835;
+  --color-text-inverse:   #0a0a0a;
 
-  /* ── Spacing ──────────────────────────────────────────────────────────── */
-  --spacing-xs:           4px;
-  --spacing-sm:           8px;
-  --spacing-md:           16px;
-  --spacing-lg:           24px;
-  --spacing-xl:           32px;
+  /* Accent or/laiton — UN SEUL accent chaud */
+  --color-gold:           #b8941f;
+  --color-gold-light:     #d4aa2a;
+  --color-gold-dim:       #6b5510;
+  --color-gold-subtle:    rgba(184, 148, 31, 0.08);
 
-  /* ── Radius ───────────────────────────────────────────────────────────── */
-  --radius-sm:            4px;
-  --radius-md:            8px;
-  --radius-lg:            12px;
-  --radius-full:          9999px;
+  /* États */
+  --color-success:        #2d6a3f;
+  --color-success-text:   #6dbb87;
+  --color-danger:         #6b1a1a;
+  --color-danger-text:    #cc6666;
+  --color-warning:        #6b4a0a;
+  --color-warning-text:   #cc9944;
 
-  /* ── Shadows ──────────────────────────────────────────────────────────── */
-  --shadow-sm:            0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md:            0 4px 12px rgba(0,0,0,0.4);
-  --shadow-lg:            0 8px 24px rgba(0,0,0,0.5);
+  /* ── Typographie ────────────────────────────────── */
+  --font-display:   'Playfair Display', Georgia, serif;
+  --font-main:      'JetBrains Mono', 'Fira Code', monospace;
+  --font-mono:      'JetBrains Mono', monospace;
 
-  /* ── Transitions ──────────────────────────────────────────────────────── */
-  --transition-fast:      0.15s ease;
-  --transition-normal:    0.25s ease;
+  --font-size-xs:   10px;
+  --font-size-sm:   11px;
+  --font-size-base: 13px;
+  --font-size-md:   14px;
+  --font-size-lg:   16px;
+  --font-size-xl:   20px;
+  --font-size-2xl:  28px;
+  --font-size-3xl:  36px;
 
-  /* ── Layout ───────────────────────────────────────────────────────────── */
-  --sidebar-width:        240px;
-  --pipeline-assistant-width:  260px;
-  --pipeline-nodeconfig-width: 300px;
+  --font-weight-light:    300;
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+  --font-weight-black:    900;
 
-  /* ── Aliases backward-compat (anciens noms utilisés dans les .css) ────── */
-  /* ChatInterface / Sidebar / AdminPanel */
+  --letter-spacing-tight: -0.02em;
+  --letter-spacing-normal: 0em;
+  --letter-spacing-wide:  0.06em;
+  --letter-spacing-wider: 0.12em;
+
+  --line-height-tight:  1.2;
+  --line-height-base:   1.55;
+  --line-height-loose:  1.8;
+
+  /* ── Spacing ────────────────────────────────────── */
+  --spacing-xs:   4px;
+  --spacing-sm:   8px;
+  --spacing-md:   16px;
+  --spacing-lg:   24px;
+  --spacing-xl:   40px;
+  --spacing-2xl:  64px;
+
+  /* ── Radius — minimaliste, pas arrondi excessif ─── */
+  --radius-sm:    2px;
+  --radius-md:    4px;
+  --radius-lg:    6px;
+  --radius-xl:    8px;
+  --radius-full:  9999px;
+
+  /* ── Ombres — douces, profondes ─────────────────── */
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:    0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg:    0 8px 32px rgba(0,0,0,0.6);
+  --shadow-gold:  0 0 20px rgba(184,148,31,0.12);
+  --shadow-inset: inset 0 1px 3px rgba(0,0,0,0.5);
+
+  /* ── Layout ─────────────────────────────────────── */
+  --sidebar-width:              240px;
+  --pipeline-assistant-width:   260px;
+  --pipeline-nodeconfig-width:  300px;
+  --header-height:              48px;
+
+  /* ── Transitions ────────────────────────────────── */
+  --transition-fast:    0.12s ease;
+  --transition-normal:  0.22s ease;
+  --transition-slow:    0.4s ease;
+
+  /* ── Backward-compat aliases (anciens noms rétro) ── */
+  /* Couleurs */
+  --color-accent:         var(--color-gold);
+  --color-accent-hover:   var(--color-gold-light);
+  --color-accent-amber:   var(--color-gold-light);
+  --color-primary:        var(--color-gold);
+  --color-primary-hover:  var(--color-gold-light);
+  --color-phosphore:      var(--color-success-text);
+  --color-phosphore-dim:  var(--color-success);
+  --color-border-dark:    var(--color-border);
+  --color-border-light:   var(--color-border-muted);
+  --color-warning:        var(--color-warning);
+  --color-success:        var(--color-success);
+
+  /* Ombres rétro → nouvelles ombres douces */
+  --shadow-raised:        var(--shadow-md);
+  --shadow-window:        var(--shadow-lg);
+
+  /* Texture — supprimée dans le nouveau thème */
+  --texture-noise: none;
+
+  /* Short aliases */
   --bg:      var(--color-bg);
   --surf:    var(--color-surface);
   --surf2:   var(--color-surface-2);
   --border:  var(--color-border);
-  --accent:  var(--color-primary);
-  --accent2: var(--color-accent);
+  --accent:  var(--color-gold);
+  --accent2: var(--color-gold-light);
   --text:    var(--color-text);
   --dim:     var(--color-text-muted);
   --mute:    var(--color-text-disabled);
-  --danger:  var(--color-danger);
-  --ok:      var(--color-success);
-  --warn:    var(--color-warning);
+  --danger:  var(--color-danger-text);
+  --ok:      var(--color-success-text);
+  --warn:    var(--color-warning-text);
 
-  /* PipelineEditor */
-  --pe-bg:      var(--color-bg);
-  --pe-surf:    var(--color-surface);
-  --pe-surf2:   var(--color-surface-2);
-  --pe-border:  var(--color-border);
-  --pe-accent:  var(--color-primary);
-  --pe-text:    var(--color-text);
-  --pe-dim:     var(--color-text-muted);
-  --pe-mute:    var(--color-text-disabled);
-  --pe-danger:  var(--color-danger);
-  --pe-ok:      var(--color-success);
-  --pe-grid:    var(--color-surface-2);
+  /* PipelineEditor aliases */
+  --pe-bg:       var(--color-bg);
+  --pe-surf:     var(--color-surface);
+  --pe-surf2:    var(--color-surface-2);
+  --pe-border:   var(--color-border);
+  --pe-accent:   var(--color-gold);
+  --pe-text:     var(--color-text);
+  --pe-dim:      var(--color-text-muted);
+  --pe-mute:     var(--color-text-disabled);
+  --pe-danger:   var(--color-danger-text);
+  --pe-ok:       var(--color-success-text);
+  --pe-grid:     var(--color-surface-inset);
   --pe-text-dim: var(--color-text-muted);
 }

@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react';
 import { api, auth } from '../api';
 import './Sidebar.css';
 
+const ThemeToggle = () => {
+  const [theme, setTheme] = useState(localStorage.getItem('llmc-theme') || 'council');
+  const toggle = () => {
+    const next = theme === 'council' ? 'next-dark' : 'council';
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('llmc-theme', next);
+  };
+  return <button onClick={toggle} className="theme-toggle">{theme === 'council' ? '◐ COUNCIL' : '● DEEP'}</button>;
+};
+
 export default function Sidebar({
   conversations,
   currentConversationId,
@@ -323,6 +334,7 @@ export default function Sidebar({
                 <span className="sidebar-user-role">{user.role}</span>
               </div>
             </div>
+            <ThemeToggle />
             <select
               className="sidebar-lang-select"
               value={language}
