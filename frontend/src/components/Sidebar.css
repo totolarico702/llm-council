@@ -94,6 +94,76 @@
 .conversation-list::-webkit-scrollbar { width: 4px; }
 .conversation-list::-webkit-scrollbar-thumb { background: var(--border, #30363D); border-radius: 2px; }
 
+/* ── Pipeline sidebar items ── */
+.pipeline-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--dim, #8B949E);
+  transition: background .12s, color .12s;
+}
+.pipeline-sidebar-item:hover {
+  background: var(--surf2, #1C2333);
+  color: var(--text, #E6EDF3);
+}
+.pipeline-sidebar-icon {
+  font-size: 13px;
+  color: #3B82F6;
+  flex-shrink: 0;
+}
+.pipeline-sidebar-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pipeline-sidebar-menu-btn {
+  background: none;
+  border: none;
+  color: var(--dim, #8B949E);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background .12s, color .12s;
+}
+.pipeline-sidebar-menu-btn:hover {
+  background: var(--surf2, #1C2333);
+  color: var(--text, #E6EDF3);
+}
+.pipeline-sidebar-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 2px);
+  background: #161B22;
+  border: 1px solid #30363D;
+  border-radius: 7px;
+  overflow: hidden;
+  z-index: 300;
+  min-width: 150px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.5);
+}
+.pipeline-sidebar-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 12px;
+  color: #C9D1D9;
+  cursor: pointer;
+  transition: background .1s;
+}
+.pipeline-sidebar-dropdown button:hover { background: #1C2333; }
+.pipeline-sidebar-dropdown button.danger { color: #F85149; }
+
 /* Section labels */
 .section-label {
   display: flex;

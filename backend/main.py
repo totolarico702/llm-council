@@ -1291,6 +1291,90 @@ async def route_allowed_pipelines(user: dict = Depends(get_current_user)):
         return {"allowed": None, "all": True}
     return {"allowed": [g["id"] for g in list_groups(user)], "all": False}
 
+
+# ── Pipelines CRUD ──────────────────────────────────────────────────────────
+
+def _group_to_pipeline(group: dict) -> dict:
+    """Convertit un groupe en format pipeline (avec wrapper cog)."""
+    return {
+        "id":          group["id"],
+        "name":        group.get("name", ""),
+        "description": group.get("description", ""),
+        "created_at":  group.get("created_at", ""),
+        "updated_at":  group.get("updated_at", group.get("created_at", "")),
+        "version":     group.get("version", 1),
+        "tags":        group.get("tags", []),
+        "cog": {
+            "cog_version": "1.0",
+            "nodes":  group.get("nodes", []),
+            "edges":  group.get("edges", []),
+            "config": group.get("config", {}),
+        },
+    }
+
+@api_v1.get("/pipelines")
+async def route_list_pipelines(user: dict = Depends(get_current_user)):
+    """Liste tous les pipelines accessibles à l'utilisateur."""
+    groups = list_groups(None if user.get("role") == "admin" else user)
+    return [_group_to_pipeline(g) for g in groups]
+
+@api_v1.post("/pipelines")
+async def route_create_pipeline(body: dict, user: dict = Depends(get_current_user)):
+    """Crée un nouveau pipeline vide ou depuis un cog."""
+    cog  = body.get("cog", {})
+    name = body.get("name") or cog.get("name") or "Nouveau pipeline"
+    group = create_group(
+        name,
+        nodes  = cog.get("nodes", []),
+        edges  = cog.get("edges", []),
+        models = [],
+    )
+    return _group_to_pipeline(group)
+
+@api_v1.get("/pipelines/{pipeline_id}")
+async def route_get_pipeline(pipeline_id: str, user: dict = Depends(get_current_user)):
+    """Charge un pipeline par ID."""
+    group = get_group(pipeline_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Pipeline introuvable")
+    return _group_to_pipeline(group)
+
+@api_v1.patch("/pipelines/{pipeline_id}")
+async def route_patch_pipeline(pipeline_id: str, body: dict,
+                                user: dict = Depends(get_current_user)):
+    """Met à jour un pipeline (nom, cog, nodes, edges)."""
+    group = get_group(pipeline_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Pipeline introuvable")
+    data: dict = {}
+    if "name" in body:
+        data["name"] = body["name"]
+    cog = body.get("cog", {})
+    if "nodes" in cog:
+        data["nodes"] = cog["nodes"]
+    if "edges" in cog:
+        data["edges"] = cog["edges"]
+    if "config" in cog:
+        data["config"] = cog["config"]
+    # compatibilité format direct
+    if "nodes" in body and "cog" not in body:
+        data["nodes"] = body["nodes"]
+    if "edges" in body and "cog" not in body:
+        data["edges"] = body["edges"]
+    import time as _t
+    data["updated_at"] = _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime())
+    updated = update_group(pipeline_id, data)
+    return _group_to_pipeline(updated)
+
+@api_v1.delete("/pipelines/{pipeline_id}")
+async def route_delete_pipeline(pipeline_id: str, user: dict = Depends(get_current_user)):
+    """Supprime un pipeline."""
+    group = get_group(pipeline_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Pipeline introuvable")
+    delete_group(pipeline_id)
+    return {"ok": True}
+
 # ── Catalogue modèles OpenRouter ─────────────────────────────────────────────
 
 @api_v1.get("/models")
@@ -2002,8 +2086,20 @@ async def pipeline_assistant(body: dict, _: dict = Depends(require_admin)):
             except Exception:
                 pass
 
+    is_modification = bool(current and current.get("nodes"))
+    mode_section = """
+Modes de réponse :
+1. Si l'user veut CRÉER un nouveau pipeline → générer un .cog complet
+2. Si l'user veut MODIFIER le pipeline actuel → générer le .cog modifié COMPLET (pas juste le diff)
+   - Conserver les nœuds/edges existants sauf ceux explicitement modifiés
+   - Exemples : "ajoute un nœud fact-check après llm_x" → insérer nœud + edge
+                "remplace Mistral par Claude" → changer le model du nœud concerné
+                "supprime le merge" → retirer le nœud et recâbler les edges
+3. Si l'user pose une question sur le pipeline → répondre en texte naturel, SANS JSON
+""" if is_modification else ""
+
     system_prompt = f"""Tu es un expert en construction de pipelines LLM Council.
-Tu aides l'utilisateur à créer des pipelines DAG en générant du JSON au format .cog v1.0.
+Tu peux créer ou modifier des pipelines DAG au format .cog v1.0.
 
 Grammaire .cog disponible :
 - type "llm" : nœud LLM cloud (OpenRouter)
@@ -2017,11 +2113,11 @@ Grammaire .cog disponible :
 - type "output" : point de sortie (obligatoire, id: "output")
 
 Variables disponibles dans les prompts : {{{{user_input}}}}, {{{{context}}}}, {{{{previous_output}}}}
-
+{mode_section}
 Règles :
 1. Toujours inclure un nœud "input" et un nœud "output"
 2. Les edges connectent les nœuds dans l'ordre d'exécution
-3. Répondre UNIQUEMENT avec un JSON valide entre balises ```json et ```, sans texte avant ni après
+3. Quand tu génères un pipeline → répondre UNIQUEMENT avec un JSON valide entre balises ```json et ```
 4. Utiliser des id courts et descriptifs (ex: "rag_docs", "llm_analyse")
 5. cog_version doit être "1.0"
 

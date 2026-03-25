@@ -70,6 +70,11 @@ export const ROUTES = {
 
   // ── Pipelines ──────────────────────────────────────────
   pipelines: {
+    list:         `${BASE}/pipelines`,
+    create:       `${BASE}/pipelines`,
+    get:          (id) => `${BASE}/pipelines/${id}`,
+    update:       (id) => `${BASE}/pipelines/${id}`,
+    delete:       (id) => `${BASE}/pipelines/${id}`,
     allowed:      `${BASE}/pipelines/allowed`,
     importCog:    `${BASE}/pipelines/import-cog`,
     validateCog:  `${BASE}/pipelines/validate-cog`,

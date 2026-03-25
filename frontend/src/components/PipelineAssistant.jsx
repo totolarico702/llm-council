@@ -7,6 +7,8 @@ import { apiFetch } from '../api'
 import { ROUTES }   from '../api/routes'
 
 export default function PipelineAssistant({ currentPipeline, onApply, onClose }) {
+  const isModification = (currentPipeline?.nodes?.length ?? 0) > 0
+
   const [messages,  setMessages]  = useState([
     { role: 'assistant', content: 'Décris le pipeline que tu veux créer. Ex: "Un pipeline qui recherche dans le RAG puis analyse avec Claude"' }
   ])
@@ -32,7 +34,7 @@ export default function PipelineAssistant({ currentPipeline, onApply, onClose })
         body: JSON.stringify({
           message: text,
           conversation_history: newMessages.slice(-10),
-          current_pipeline: currentPipeline,
+          current_pipeline: isModification ? currentPipeline : null,
         }),
       })
       const data = await res.json()
@@ -46,9 +48,9 @@ export default function PipelineAssistant({ currentPipeline, onApply, onClose })
   }
 
   const sidebarStyle = {
-    width: 320, flexShrink: 0,
+    width: 260, flexShrink: 0,
     background: '#0D1117',
-    borderLeft: '1px solid #21262D',
+    borderRight: '1px solid #21262D',
     display: 'flex', flexDirection: 'column',
     height: '100%',
     position: 'relative',
@@ -58,8 +60,15 @@ export default function PipelineAssistant({ currentPipeline, onApply, onClose })
     <div style={sidebarStyle}>
       {/* Header */}
       <div style={{ padding: '10px 14px', borderBottom: '1px solid #21262D', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#E6EDF3', flex: 1 }}>🤖 Assistant Pipeline</span>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 16 }}>✕</button>
+        <span style={{ fontSize: 14, fontWeight: 700, color: '#E6EDF3', flex: 1 }}>🤖 Assistant</span>
+        <span style={{
+          fontSize: 10, padding: '2px 7px', borderRadius: 10, fontWeight: 600,
+          background: isModification ? 'rgba(245,158,11,.15)' : 'rgba(34,197,94,.12)',
+          color:      isModification ? '#F59E0B' : '#22C55E',
+          border:     `1px solid ${isModification ? 'rgba(245,158,11,.3)' : 'rgba(34,197,94,.3)'}`,
+        }}>
+          {isModification ? `✏️ ${currentPipeline?.name || 'Modification'}` : '🆕 Nouveau'}
+        </span>
       </div>
 
       {/* Messages */}

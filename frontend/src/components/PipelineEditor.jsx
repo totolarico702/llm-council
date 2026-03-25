@@ -343,9 +343,10 @@ export default function PipelineEditor({ group, onSave, onClose }) {
   const [saving, setSaving]         = useState(false);
   const [saveError, setSaveError]   = useState('');
   const [dirty, setDirty]           = useState(false);
+  const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'unsaved' | 'saving'
+  const [pipelineId, setPipelineId] = useState(group?.id || null);
   const [confirmDelete, setConfirmDelete] = useState(false); // M9
   const [toast, setToast] = useState(null); // { msg, type: 'ok'|'err' }
-  const [showAssistant, setShowAssistant] = useState(false);
   const [importModal, setImportModal]     = useState(false);
   const [importText, setImportText]       = useState('');
   const [importPreview, setImportPreview] = useState(null);
@@ -392,20 +393,31 @@ export default function PipelineEditor({ group, onSave, onClose }) {
       .catch(() => {});
   }, []);
 
-  // Init depuis groupe
+  // Init depuis groupe (supporte format cog et format direct)
   useEffect(() => {
     setPipelineName(group?.name || '');
-    if (group?.nodes?.length > 0) {
-      const ns = nodesFromBackend(group.nodes);
+    setPipelineId(group?.id || null);
+    // Support new cog format + legacy direct nodes/edges
+    const loadNodes = group?.cog?.nodes || group?.nodes || [];
+    const loadEdges = group?.cog?.edges || group?.edges || [];
+    if (loadNodes.length > 0) {
+      const ns = nodesFromBackend(loadNodes);
       setNodes(ns);
-      // Reconstruire edges depuis inputs[]
-      const es = [];
-      group.nodes.forEach(n => {
-        (n.inputs || []).forEach(inp => {
-          if (inp !== 'user_prompt') es.push({ from: inp, to: n.id });
-        });
-      });
+      // Utiliser les edges stockés, sinon reconstruire depuis inputs[]
+      let es = Array.isArray(loadEdges) && loadEdges.length > 0
+        ? loadEdges
+        : (() => {
+            const rebuilt = [];
+            loadNodes.forEach(n => {
+              (n.inputs || []).forEach(inp => {
+                if (inp !== 'user_prompt') rebuilt.push({ from: inp, to: n.id });
+              });
+            });
+            return rebuilt;
+          })();
+      console.log('edges chargées:', es);
       setEdges(es);
+      setSaveStatus('saved');
     } else {
       setNodes([
         {
@@ -425,6 +437,20 @@ export default function PipelineEditor({ group, onSave, onClose }) {
     }
   }, [group]);
 
+  // Marquer unsaved quand nodes/edges/nom changent (après init)
+  const initDone = useRef(false);
+  useEffect(() => {
+    if (!initDone.current) { initDone.current = true; return; }
+    setSaveStatus('unsaved');
+    setDirty(true);
+  }, [nodes, edges, pipelineName]);
+
+  // Auto-save toutes les 30s si unsaved
+  useEffect(() => {
+    if (saveStatus !== 'unsaved') return;
+    const timer = setTimeout(() => handleSave(), 30000);
+    return () => clearTimeout(timer);
+  }, [saveStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Drag node ──────────────────────────────────────────────────────────────
   const onNodeMouseDown = useCallback((e, nodeId) => {
@@ -746,14 +772,13 @@ export default function PipelineEditor({ group, onSave, onClose }) {
   const handleSave = async () => {
     const name = pipelineName.trim();
     if (!name) { setSaveError('Nom requis'); return; }
-    setSaving(true); setSaveError('');
+    setSaving(true); setSaveStatus('saving'); setSaveError('');
     try {
-      // Sérialiser : tous les champs node selon node_type
       const backendNodes = nodes.map(({ _source, ...n }) => {
         const base = {
-          id:     n.id,
+          id:        n.id,
           node_type: n.node_type || 'llm',
-          inputs: n.inputs || ['user_prompt'],
+          inputs:    n.inputs || ['user_prompt'],
           x: Math.round(n.x),
           y: Math.round(n.y),
         };
@@ -765,18 +790,25 @@ export default function PipelineEditor({ group, onSave, onClose }) {
                           web_search: n.web_search || 'none',
                           role_prompt: n.role_prompt || '' };
       });
-      const isNew = !group?.id;
+      const isNew = !pipelineId;
+      const payload = {
+        name,
+        cog: { cog_version: '1.0', nodes: backendNodes, edges, config: {} },
+      };
       const res = await apiFetch(
-        isNew ? ROUTES.groups.create : ROUTES.groups.update(group.id),
-        { method: isNew ? 'POST' : 'PUT',
-          body: JSON.stringify({ name, nodes: backendNodes }) }
+        isNew ? ROUTES.pipelines.create : ROUTES.pipelines.update(pipelineId),
+        { method: isNew ? 'POST' : 'PATCH', body: JSON.stringify(payload) }
       );
       if (!res.ok) throw new Error(await res.text());
       const updated = await res.json();
+      if (isNew) setPipelineId(updated.id);
       setDirty(false);
+      setSaveStatus('saved');
+      showToast('Pipeline sauvegardé', 'ok');
       onSave?.(updated, isNew);
     } catch (e) {
       setSaveError(e.message || 'Erreur sauvegarde');
+      setSaveStatus('unsaved');
     } finally {
       setSaving(false);
     }
@@ -878,6 +910,47 @@ export default function PipelineEditor({ group, onSave, onClose }) {
     <div className="pe-overlay" onClick={e => e.target === e.currentTarget && onClose?.()}>
       <div className="pe-modal">
 
+        {/* ── Colonne gauche : Assistant (toujours visible) ── */}
+        <PipelineAssistant
+          currentPipeline={{ nodes, edges, name: pipelineName }}
+          onApply={(cog) => {
+            const existingPositions = {};
+            nodes.forEach(n => { existingPositions[n.id] = { x: n.x, y: n.y }; });
+            const converted = (cog.nodes || []).map((n, i) => {
+              const pos = existingPositions[n.id] || { x: n.x ?? defaultPos(i).x, y: n.y ?? defaultPos(i).y };
+              if (n.type === 'input') {
+                return { id: n.id, role: 'reader', model: n.model || '', _source: true, inputs: ['user_prompt'], web_search: 'none', role_prompt: n.system_prompt || '', ...pos };
+              }
+              if (n.type === 'output') {
+                return { id: n.id, role: 'chairman', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || '', ...pos };
+              }
+              if (n.type === 'llm' || n.type === 'llm_local') {
+                return { id: n.id, role: 'reader', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || '', ...pos };
+              }
+              if (n.type === 'rag_search') {
+                return { id: n.id, node_type: 'tool', tool_type: 'rag_search', inputs: [], folder_id: n.folder_id || '', limit: n.limit ?? 5, score_threshold: n.score_threshold ?? 0.3, ...pos };
+              }
+              if (n.type === 'tool') {
+                return { id: n.id, node_type: 'tool', tool_type: n.tool_type || 'web_search', inputs: [], ...pos };
+              }
+              if (n.type === 'merge') {
+                return { id: n.id, role: 'synthesizer', model: n.model || '', inputs: [], web_search: 'none', role_prompt: '', ...pos };
+              }
+              if (n.type === 'condition' || n.type === 'mcp') {
+                return { id: n.id, role: 'custom', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || n.condition || '', ...pos };
+              }
+              return { id: n.id, role: 'custom', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || '', ...pos };
+            });
+            const convertedEdges = (cog.edges || []).map(e => ({ from: e.from, to: e.to }));
+            setNodes(converted);
+            setEdges(convertedEdges);
+            setDirty(true);
+          }}
+        />
+
+        {/* ── Colonne centrale : Toolbar + Canvas + Footer ── */}
+        <div className="pe-canvas-col">
+
         {/* ── Toolbar ── */}
         <div className="pe-toolbar">
           <span className="pe-toolbar-icon">⬡</span>
@@ -901,12 +974,17 @@ export default function PipelineEditor({ group, onSave, onClose }) {
           <button className="pe-toolbar-btn pe-btn-cloud" onClick={applyAllCloud}
             title="Repasser tous les nœuds LLM sur le modèle cloud par défaut">☁ Tout en cloud</button>
           <div className="pe-toolbar-sep" />
-          {/* Boutons export/import/assistant */}
           <button onClick={() => setImportModal(true)} className="pe-toolbar-btn">📥 Importer</button>
           <button onClick={handleExportCog} className="pe-toolbar-btn">📤 Exporter</button>
           <button onClick={handleCopyJson} className="pe-toolbar-btn">📋 Copier JSON</button>
-          <button onClick={() => setShowAssistant(a => !a)} className="pe-toolbar-btn"
-            style={showAssistant ? { background: '#1d3a6e' } : {}}>🤖 Assistant</button>
+          <button onClick={handleSave} className="pe-toolbar-btn pe-btn-save-inline"
+            disabled={saving || !pipelineName.trim()}
+            title="Sauvegarder le pipeline">
+            {saving ? '⟳' : '💾'} Sauvegarder
+          </button>
+          <span className={`pe-save-indicator ${saveStatus}`}>
+            {saveStatus === 'unsaved' ? '● Non sauvegardé' : saveStatus === 'saving' ? '⟳ Sauvegarde…' : '✓ Sauvegardé'}
+          </span>
           {toast && (
             <span className={`pe-toast pe-toast-${toast.type}`}>{toast.msg}</span>
           )}
@@ -1074,59 +1152,44 @@ export default function PipelineEditor({ group, onSave, onClose }) {
             )}
           </div>
 
-          {/* Panneau latéral — visible seulement si un nœud est sélectionné */}
-          {selectedNode && (
-            <div className="pe-side" onClick={e => e.stopPropagation()}>
-              <NodePanel
-                node={selectedNode}
-                availableModels={availableModels}
-                defaultModel={defaultModel}
-                localModels={localModels}
-                ollamaAvailable={ollamaAvailable}
-                onChange={updateNode}
-                onDelete={deleteSelected}
-                onClose={() => setSelectedId(null)}
-              />
-            </div>
-          )}
+        </div>
 
-          {/* Assistant sidebar */}
-          {showAssistant && (
-            <PipelineAssistant
-              currentPipeline={{ nodes, edges }}
-              onApply={(cog) => {
-                // Convertit les nœuds .cog (type/label/system_prompt) en format interne (role/node_type/x/y)
-                const converted = (cog.nodes || []).map((n, i) => {
-                  const pos = { x: n.x ?? defaultPos(i).x, y: n.y ?? defaultPos(i).y }
-                  if (n.type === 'input') {
-                    return { id: n.id, role: 'reader', model: n.model || '', _source: true, inputs: ['user_prompt'], web_search: 'none', role_prompt: n.system_prompt || '', ...pos }
-                  }
-                  if (n.type === 'output') {
-                    return { id: n.id, role: 'chairman', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || '', ...pos }
-                  }
-                  if (n.type === 'llm' || n.type === 'llm_local') {
-                    return { id: n.id, role: 'reader', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || '', ...pos }
-                  }
-                  if (n.type === 'rag_search') {
-                    return { id: n.id, node_type: 'tool', tool_type: 'rag_search', inputs: [], folder_id: n.folder_id || '', limit: n.limit ?? 5, score_threshold: n.score_threshold ?? 0.3, ...pos }
-                  }
-                  if (n.type === 'tool') {
-                    return { id: n.id, node_type: 'tool', tool_type: n.tool_type || 'web_search', inputs: [], ...pos }
-                  }
-                  if (n.type === 'merge') {
-                    return { id: n.id, role: 'synthesizer', model: n.model || '', inputs: [], web_search: 'none', role_prompt: '', ...pos }
-                  }
-                  if (n.type === 'condition' || n.type === 'mcp') {
-                    return { id: n.id, role: 'custom', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || n.condition || '', ...pos }
-                  }
-                  return { id: n.id, role: 'custom', model: n.model || '', inputs: [], web_search: 'none', role_prompt: n.system_prompt || '', ...pos }
-                })
-                const convertedEdges = (cog.edges || []).map(e => ({ from: e.from, to: e.to }))
-                setNodes(converted)
-                setEdges(convertedEdges)
-                setDirty(true)
-              }}
-              onClose={() => setShowAssistant(false)}
+        {/* ── Footer ── */}
+        <div className="pe-footer">
+          <div className="pe-footer-info">
+            <span className="pe-fi">{nodes.length} nœud{nodes.length > 1 ? 's' : ''}</span>
+            <span className="pe-fi">{edges.length} connexion{edges.length > 1 ? 's' : ''}</span>
+            <span className="pe-fi pe-fi-hint">
+              Glisse les nœuds · clic port <span style={{color:'#22C55E'}}>●</span> sortie → port <span style={{color:'#3B82F6'}}>●</span> entrée · clic arête = supprimer
+              · <strong>Molette</strong> = zoom · <strong>Alt+drag</strong> = pan
+            </span>
+            <button className="pe-zoom-reset" onClick={resetView}
+              title="Réinitialiser la vue">
+              {Math.round(zoom * 100)}% ↺
+            </button>
+          </div>
+          {saveError && <span className="pe-save-error">{saveError}</span>}
+          <button className="pe-btn-cancel" onClick={onClose}>Annuler</button>
+          <button className="pe-btn-save" onClick={handleSave}
+            disabled={saving || !dirty || !pipelineName.trim()}>
+            {saving ? 'Sauvegarde…' : group?.id ? 'Sauvegarder' : 'Créer'}
+          </button>
+        </div>
+
+        </div>{/* fin pe-canvas-col */}
+
+        {/* ── Colonne droite : Config nœud (slide-in si nœud sélectionné) ── */}
+        <div className={`pe-side${selectedNode ? '' : ' pe-side-hidden'}`} onClick={e => e.stopPropagation()}>
+          {selectedNode && (
+            <NodePanel
+              node={selectedNode}
+              availableModels={availableModels}
+              defaultModel={defaultModel}
+              localModels={localModels}
+              ollamaAvailable={ollamaAvailable}
+              onChange={updateNode}
+              onDelete={deleteSelected}
+              onClose={() => setSelectedId(null)}
             />
           )}
         </div>
@@ -1180,27 +1243,6 @@ export default function PipelineEditor({ group, onSave, onClose }) {
           </div>
         )}
 
-        {/* ── Footer ── */}
-        <div className="pe-footer">
-          <div className="pe-footer-info">
-            <span className="pe-fi">{nodes.length} nœud{nodes.length > 1 ? 's' : ''}</span>
-            <span className="pe-fi">{edges.length} connexion{edges.length > 1 ? 's' : ''}</span>
-            <span className="pe-fi pe-fi-hint">
-              Glisse les nœuds · clic port <span style={{color:'#22C55E'}}>●</span> sortie → port <span style={{color:'#3B82F6'}}>●</span> entrée · clic arête = supprimer
-              · <strong>Molette</strong> = zoom · <strong>Alt+drag</strong> = pan
-            </span>
-            <button className="pe-zoom-reset" onClick={resetView}
-              title="Réinitialiser la vue">
-              {Math.round(zoom * 100)}% ↺
-            </button>
-          </div>
-          {saveError && <span className="pe-save-error">{saveError}</span>}
-          <button className="pe-btn-cancel" onClick={onClose}>Annuler</button>
-          <button className="pe-btn-save" onClick={handleSave}
-            disabled={saving || !dirty || !pipelineName.trim()}>
-            {saving ? 'Sauvegarde…' : group?.id ? 'Sauvegarder' : 'Créer'}
-          </button>
-        </div>
 
       </div>
     </div>

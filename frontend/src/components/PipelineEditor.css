@@ -28,11 +28,37 @@
   background: var(--pe-bg);
   border: 1px solid var(--pe-border);
   border-radius: 10px;
-  width: 100%; max-width: 1200px;
+  width: 100%; max-width: 1400px;
   height: calc(100vh - 24px);
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: row;
   overflow: hidden;
   box-shadow: 0 40px 120px rgba(0,0,0,.8);
+}
+
+/* ── Colonne centrale (canvas + toolbar) ── */
+.pe-canvas-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Indicateur sauvegarde ── */
+.pe-save-indicator {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.pe-save-indicator.unsaved {
+  color: #F59E0B;
+}
+.pe-save-indicator.saved {
+  color: var(--pe-ok);
+}
+.pe-save-indicator.saving {
+  color: var(--pe-dim);
 }
 
 /* ── Toast notification ── */
@@ -264,13 +290,31 @@
 
 /* ── Panneau latéral ── */
 .pe-side {
-  width: 290px; flex-shrink: 0;
+  width: 300px; flex-shrink: 0;
   border-left: 1px solid var(--pe-border);
   overflow-y: auto;
   background: var(--pe-surf);
   scrollbar-width: thin;
   scrollbar-color: var(--pe-border) transparent;
+  transition: width 0.2s ease;
 }
+.pe-side-hidden {
+  width: 0;
+  overflow: hidden;
+  border-left: none;
+}
+
+/* ── Bouton save inline toolbar ── */
+.pe-btn-save-inline {
+  background: rgba(59,130,246,.12) !important;
+  border-color: rgba(59,130,246,.4) !important;
+  color: #60A5FA !important;
+}
+.pe-btn-save-inline:hover:not(:disabled) {
+  background: rgba(59,130,246,.25) !important;
+  border-color: #3B82F6 !important;
+}
+.pe-btn-save-inline:disabled { opacity: .35; cursor: not-allowed; }
 
 .pe-np-empty {
   display: flex; flex-direction: column;
