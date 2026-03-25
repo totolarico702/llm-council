@@ -1344,7 +1344,7 @@ async def route_get_pipeline(pipeline_id: str, user: dict = Depends(get_current_
 
 @api_v1.patch("/pipelines/{pipeline_id}")
 async def route_patch_pipeline(pipeline_id: str, body: dict,
-                                user: dict = Depends(get_current_user)):
+                                user: dict = Depends(require_admin)):
     """Met à jour un pipeline (nom, cog, nodes, edges)."""
     group = get_group(pipeline_id)
     if not group:
@@ -1370,7 +1370,7 @@ async def route_patch_pipeline(pipeline_id: str, body: dict,
     return _group_to_pipeline(updated)
 
 @api_v1.delete("/pipelines/{pipeline_id}")
-async def route_delete_pipeline(pipeline_id: str, user: dict = Depends(get_current_user)):
+async def route_delete_pipeline(pipeline_id: str, user: dict = Depends(require_admin)):
     """Supprime un pipeline."""
     group = get_group(pipeline_id)
     if not group:
@@ -1390,15 +1390,19 @@ async def route_get_models(request: Request):
     import httpx
     from .config import OPENROUTER_API_KEY
 
-    # Déterminer si l'utilisateur est admin
+    # Déterminer si l'utilisateur est admin — cookie httpOnly (priorité) ou Bearer
     is_admin_user = False
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        try:
-            user = db.get_current_user_from_token(auth_header[7:])
+    try:
+        token = request.cookies.get("llmc_token")
+        if not token:
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]
+        if token:
+            user = db.get_current_user_from_token(token)
             is_admin_user = user.get("role") == "admin"
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     # Charger la liste autorisée depuis TinyDB
     allowed_tbl = db._table("allowed_models")

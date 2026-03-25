@@ -5,6 +5,7 @@ import LoginPage from './components/LoginPage';
 import AdminPanel from './components/AdminPanel';
 import ErrorBoundary from './components/ErrorBoundary';
 import { api, auth } from './api';
+import { loadModels } from './modelsStore';
 import './App.css';
 
 function App() {
@@ -69,8 +70,7 @@ function App() {
       setLanguage(loggedUser.language);
       localStorage.setItem('llmc_lang', loggedUser.language);
     }
-    setTokenProvider(() => auth.getToken());  // injecter le provider de token
-    loadModels();                            // charger les modèles après login
+    loadModels();  // charger les modèles après login
   };
 
   const handleLangChange = async (lang) => {

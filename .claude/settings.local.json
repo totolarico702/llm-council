@@ -29,7 +29,9 @@
       "Bash(wc:*)",
       "Bash(python -m pytest backend/tests/ -x -q)",
       "Bash(uv run python -c \":*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(py --version)",
+      "Bash(npm run:*)"
     ]
   }
 }

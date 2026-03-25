@@ -44,16 +44,16 @@
 .raga-btn:hover { background: var(--border, #30363D); }
 .raga-btn:disabled { opacity: .45; cursor: default; }
 .raga-btn-primary {
-  background: var(--accent, #3B82F6);
-  border-color: var(--accent, #3B82F6);
+  background: var(--accent, var(--color-primary));
+  border-color: var(--accent, var(--color-primary));
   color: #fff;
 }
-.raga-btn-primary:hover { background: #2563EB; border-color: #2563EB; }
+.raga-btn-primary:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
 .raga-btn-danger {
-  color: var(--danger, #F85149);
+  color: var(--danger, var(--color-danger));
   border-color: transparent;
 }
-.raga-btn-danger:hover { background: rgba(248,81,73,.12); border-color: var(--danger, #F85149); }
+.raga-btn-danger:hover { background: rgba(248,81,73,.12); border-color: var(--danger, var(--color-danger)); }
 .raga-btn-ghost {
   background: none;
   border-color: transparent;
@@ -96,7 +96,7 @@
 .raga-error {
   padding: 10px 14px;
   font-size: 12px;
-  color: var(--danger, #F85149);
+  color: var(--danger, var(--color-danger));
   background: rgba(248,81,73,.08);
   border-radius: 6px;
   margin-bottom: 10px;
@@ -112,7 +112,7 @@
 .raga-spinner {
   width: 14px; height: 14px;
   border: 2px solid var(--border, #30363D);
-  border-top-color: var(--accent, #3B82F6);
+  border-top-color: var(--accent, var(--color-primary));
   border-radius: 50%;
   animation: raga-spin .7s linear infinite;
   flex-shrink: 0;
@@ -130,7 +130,7 @@
   outline: none;
   transition: border-color .15s;
 }
-.raga-input:focus { border-color: var(--accent, #3B82F6); }
+.raga-input:focus { border-color: var(--accent, var(--color-primary)); }
 .raga-input::placeholder { color: var(--mute, #484F58); }
 
 .raga-select {
@@ -143,7 +143,7 @@
   outline: none;
   cursor: pointer;
 }
-.raga-select:focus { border-color: var(--accent, #3B82F6); }
+.raga-select:focus { border-color: var(--accent, var(--color-primary)); }
 
 /* ── Arborescence dossiers ─────────────────────────────────────────────────── */
 .raga-tree { font-size: 12px; }
@@ -168,7 +168,7 @@
 .raga-tree-node:hover { background: rgba(255,255,255,.04); }
 .raga-tree-node:hover .raga-tree-actions,
 .raga-tree-node:focus-within .raga-tree-actions { display: flex; }
-.raga-tree-node.selected { background: rgba(59,130,246,.15); color: var(--accent, #3B82F6); }
+.raga-tree-node.selected { background: rgba(59,130,246,.15); color: var(--accent, var(--color-primary)); }
 .raga-tree-chevron {
   color: var(--mute, #484F58);
   font-size: 10px;
@@ -198,11 +198,11 @@
   transition: color .1s, background .1s;
 }
 .raga-tree-action-btn:hover { color: var(--text, #E6EDF3); background: rgba(255,255,255,.1); }
-.raga-tree-action-btn.danger:hover { color: var(--danger, #F85149); background: rgba(248,81,73,.12); }
+.raga-tree-action-btn.danger:hover { color: var(--danger, var(--color-danger)); background: rgba(248,81,73,.12); }
 .raga-tree-inline-edit {
   flex: 1;
   background: var(--bg, #0D1117);
-  border: 1px solid var(--accent, #3B82F6);
+  border: 1px solid var(--accent, var(--color-primary));
   border-radius: 4px;
   color: var(--text, #E6EDF3);
   font-size: 12px;
@@ -235,7 +235,7 @@
   white-space: nowrap;
 }
 .raga-tree-bc-item:hover { color: var(--text, #E6EDF3); background: rgba(255,255,255,.07); }
-.raga-tree-bc-item.active { color: var(--accent, #3B82F6); font-weight: 600; cursor: default; }
+.raga-tree-bc-item.active { color: var(--accent, var(--color-primary)); font-weight: 600; cursor: default; }
 .raga-tree-bc-sep { color: var(--mute, #484F58); font-size: 10px; }
 
 /* ── Upload zone ───────────────────────────────────────────────────────────── */
@@ -257,7 +257,7 @@
 }
 .raga-dropzone:hover,
 .raga-dropzone.dragging {
-  border-color: var(--accent, #3B82F6);
+  border-color: var(--accent, var(--color-primary));
   background: rgba(59,130,246,.05);
   color: var(--text, #E6EDF3);
 }
@@ -287,11 +287,11 @@
 }
 .raga-upload-bar {
   height: 100%;
-  background: var(--accent, #3B82F6);
+  background: var(--accent, var(--color-primary));
   transition: width .3s;
 }
-.raga-upload-status-ok  { color: #22C55E; }
-.raga-upload-status-err { color: var(--danger, #F85149); font-size: 10px; }
+.raga-upload-status-ok  { color: var(--color-success); }
+.raga-upload-status-err { color: var(--danger, var(--color-danger)); font-size: 10px; }
 
 /* ── ACL Editor ─────────────────────────────────────────────────────────────── */
 .raga-acl-inherit-row {
@@ -319,10 +319,10 @@
   font-weight: 600;
   white-space: nowrap;
 }
-.raga-badge-read  { background: rgba(34,197,94,.15); color: #22C55E; }
-.raga-badge-write { background: rgba(59,130,246,.15); color: #3B82F6; }
-.raga-badge-admin { background: rgba(245,158,11,.15); color: #F59E0B; }
-.raga-badge-none  { background: rgba(248,81,73,.15);  color: #F85149; }
+.raga-badge-read  { background: rgba(34,197,94,.15); color: var(--color-success); }
+.raga-badge-write { background: rgba(59,130,246,.15); color: var(--color-primary); }
+.raga-badge-admin { background: rgba(245,158,11,.15); color: var(--color-warning); }
+.raga-badge-none  { background: rgba(248,81,73,.15);  color: var(--color-danger); }
 
 /* ── Audit Log ──────────────────────────────────────────────────────────────── */
 .raga-audit-filters {
@@ -340,11 +340,11 @@
   font-weight: 600;
   white-space: nowrap;
 }
-.raga-audit-badge-document_uploaded { background: rgba(34,197,94,.15); color: #22C55E; }
-.raga-audit-badge-document_deleted  { background: rgba(248,81,73,.15);  color: #F85149; }
-.raga-audit-badge-folder_deleted    { background: rgba(248,81,73,.15);  color: #F85149; }
-.raga-audit-badge-folder_created    { background: rgba(59,130,246,.15); color: #3B82F6; }
-.raga-audit-badge-acl_modified      { background: rgba(245,158,11,.15); color: #F59E0B; }
+.raga-audit-badge-document_uploaded { background: rgba(34,197,94,.15); color: var(--color-success); }
+.raga-audit-badge-document_deleted  { background: rgba(248,81,73,.15);  color: var(--color-danger); }
+.raga-audit-badge-folder_deleted    { background: rgba(248,81,73,.15);  color: var(--color-danger); }
+.raga-audit-badge-folder_created    { background: rgba(59,130,246,.15); color: var(--color-primary); }
+.raga-audit-badge-acl_modified      { background: rgba(245,158,11,.15); color: var(--color-warning); }
 .raga-audit-pagination {
   display: flex;
   align-items: center;
@@ -386,7 +386,7 @@
   box-sizing: border-box;
 }
 .raga-arb-row:hover   { background: rgba(255,255,255,.04); }
-.raga-arb-row.selected { background: rgba(59,130,246,.15); color: var(--accent, #3B82F6); }
+.raga-arb-row.selected { background: rgba(59,130,246,.15); color: var(--accent, var(--color-primary)); }
 .raga-arb-doc { color: var(--dim, #8B949E); }
 .raga-arb-editing { padding: 0 8px; }
 

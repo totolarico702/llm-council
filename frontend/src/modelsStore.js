@@ -73,8 +73,9 @@ import { useState, useEffect } from 'react';
 export function useModels() {
   const [list, setList] = useState(models); // déjà en cache = immédiat
   useEffect(() => {
+    loadModels();                 // déclenche le fetch si pas encore fait
     const unsub = subscribe(setList);
     return unsub;
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return list;
 }

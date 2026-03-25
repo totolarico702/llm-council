@@ -5,10 +5,10 @@
   --border:  rgba(255,255,255,.08);
   --text:    #F1F5F9;
   --dim:     #64748B;
-  --accent:  #3B82F6;
-  --success: #22C55E;
-  --warning: #F59E0B;
-  --danger:  #EF4444;
+  --accent:  var(--color-primary);
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --danger:  var(--color-danger);
 
   min-height: 100vh;
   background: var(--bg);
@@ -331,7 +331,7 @@
   width: 36px;
   height: 36px;
   border: 3px solid rgba(59,130,246,.2);
-  border-top-color: #3B82F6;
+  border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: db-spin .8s linear infinite;
 }
@@ -362,7 +362,7 @@
   .db-root { background: white !important; color: black !important; }
   .db-card, .db-kpi-card { background: #f9f9f9 !important; border-color: #ddd !important; }
   .db-kpi-value { color: black !important; }
-  .db-hbar-fill { background: #3B82F6 !important; }
+  .db-hbar-fill { background: var(--color-primary) !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 

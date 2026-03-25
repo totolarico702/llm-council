@@ -26,11 +26,11 @@
   animation: orb-drift 12s ease-in-out infinite alternate;
 }
 
-.orb-0 { width: 400px; height: 400px; background: var(--accent, #3B82F6);  top: -10%;  left: -10%;  animation-delay: 0s; }
-.orb-1 { width: 300px; height: 300px; background: var(--accent2, #38BDF8); bottom: 5%; right: -5%;  animation-delay: -3s; }
-.orb-2 { width: 200px; height: 200px; background: var(--accent, #3B82F6);  top: 40%;   left: 60%;   animation-delay: -6s; }
+.orb-0 { width: 400px; height: 400px; background: var(--accent, var(--color-primary));  top: -10%;  left: -10%;  animation-delay: 0s; }
+.orb-1 { width: 300px; height: 300px; background: var(--accent2, var(--color-accent)); bottom: 5%; right: -5%;  animation-delay: -3s; }
+.orb-2 { width: 200px; height: 200px; background: var(--accent, var(--color-primary));  top: 40%;   left: 60%;   animation-delay: -6s; }
 .orb-3 { width: 250px; height: 250px; background: #8B5CF6;                 bottom: 20%; left: 10%;  animation-delay: -2s; }
-.orb-4 { width: 150px; height: 150px; background: var(--accent2, #38BDF8); top: 15%;   right: 20%;  animation-delay: -8s; }
+.orb-4 { width: 150px; height: 150px; background: var(--accent2, var(--color-accent)); top: 15%;   right: 20%;  animation-delay: -8s; }
 .orb-5 { width: 350px; height: 350px; background: #1E40AF;                 top: 50%;   left: 30%;   animation-delay: -4s; opacity: 0.08; }
 
 @keyframes orb-drift {
@@ -66,7 +66,7 @@
 
 .login-logo-icon {
   font-size: 26px;
-  filter: drop-shadow(0 0 8px var(--accent, #3B82F6));
+  filter: drop-shadow(0 0 8px var(--accent, var(--color-primary)));
 }
 
 .login-logo-text {
@@ -130,7 +130,7 @@
 .login-field input::placeholder { color: #444C56; }
 
 .login-field input:focus {
-  border-color: var(--accent, #3B82F6);
+  border-color: var(--accent, var(--color-primary));
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
@@ -146,14 +146,14 @@
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 13px;
-  color: #F85149;
+  color: var(--color-danger);
   font-family: system-ui, sans-serif;
 }
 
 /* Button */
 .login-btn {
   margin-top: 4px;
-  background: var(--accent, #3B82F6);
+  background: var(--accent, var(--color-primary));
   border: none;
   border-radius: 8px;
   color: #fff;
@@ -171,7 +171,7 @@
 }
 
 .login-btn:hover:not(:disabled) {
-  background: #2563EB;
+  background: var(--color-primary-hover);
   box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
 }
 

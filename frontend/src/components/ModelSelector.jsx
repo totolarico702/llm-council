@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useModels } from '../modelsStore';
 import PipelineEditor from './PipelineEditor';
-import { apiFetch } from '../api';
+import { apiFetch, auth } from '../api';
 import { ROUTES } from '../api/routes';
 
 const WEB_SEARCH_MODES = [
@@ -12,6 +12,7 @@ const WEB_SEARCH_MODES = [
 
 export default function ModelSelector({ selectedModels, onModelsChange, webSearchMode, onWebSearchModeChange, disabled }) {
   const allModels = useModels();
+  const isAdmin   = auth.isAdmin();
   const [pipelines, setPipelines]     = useState([]);
   const [activePipelineId, setActivePipelineId] = useState(null);
   const [search, setSearch]           = useState('');
@@ -136,22 +137,26 @@ export default function ModelSelector({ selectedModels, onModelsChange, webSearc
         {pipelines.map(g => (
           <div key={g.id} className={`group-pill${activePipelineId === g.id ? ' active' : ''}`}>
             <span onClick={() => applyPipeline(g)}>{g.name}</span>
-            <button
-              className="group-pill-edit" type="button"
-              title="Éditer le pipeline"
-              onClick={e => { e.stopPropagation(); setEditingPipeline(g); }}
-            >⚙</button>
-            {!g.builtin && (
+            {isAdmin && (
+              <button
+                className="group-pill-edit" type="button"
+                title="Éditer le pipeline"
+                onClick={e => { e.stopPropagation(); setEditingPipeline(g); }}
+              >⚙</button>
+            )}
+            {isAdmin && !g.builtin && (
               <button className="group-pill-del" type="button"
                 onClick={e => deletePipeline(g.id, e)}>✕</button>
             )}
           </div>
         ))}
-        <button
-          className="group-pill-new-pipeline" type="button"
-          onClick={() => setCreatingPipeline(true)}
-          title="Nouveau pipeline"
-        >＋</button>
+        {isAdmin && (
+          <button
+            className="group-pill-new-pipeline" type="button"
+            onClick={() => setCreatingPipeline(true)}
+            title="Nouveau pipeline"
+          >＋</button>
+        )}
       </div>
 
       {/* ── Header pipeline actif ── */}
@@ -219,11 +224,13 @@ export default function ModelSelector({ selectedModels, onModelsChange, webSearc
                       {chairman && <span className="gpc-node-badge gpc-chairman">👑 {chairman.model.split('/').pop().replace(/:free$/,'')}</span>}
                     </div>
                     <div className="gpc-actions">
-                      <button className="gpc-edit-btn" type="button"
-                        onClick={e => { e.stopPropagation(); setEditingPipeline(g); setOpen(false); }}>
-                        ✏️ Éditer
-                      </button>
-                      {!g.builtin && (
+                      {isAdmin && (
+                        <button className="gpc-edit-btn" type="button"
+                          onClick={e => { e.stopPropagation(); setEditingPipeline(g); setOpen(false); }}>
+                          ✏️ Éditer
+                        </button>
+                      )}
+                      {isAdmin && !g.builtin && (
                         <button className="gpc-del-btn" type="button"
                           onClick={e => deletePipeline(g.id, e)}>🗑</button>
                       )}
@@ -232,10 +239,12 @@ export default function ModelSelector({ selectedModels, onModelsChange, webSearc
                 );
               })}
               <div className="gpc-new-wrap">
-                <button className="gpc-new-btn" type="button"
-                  onClick={() => { setCreatingPipeline(true); setOpen(false); }}>
-                  ＋ Nouveau pipeline
-                </button>
+                {isAdmin && (
+                  <button className="gpc-new-btn" type="button"
+                    onClick={() => { setCreatingPipeline(true); setOpen(false); }}>
+                    ＋ Nouveau pipeline
+                  </button>
+                )}
               </div>
             </div>
           ) : (

@@ -186,14 +186,14 @@
 
 /* Modèle sélectionné en mode council manuel */
 .model-card.selected {
-  border-color: var(--accent, #3B82F6);
+  border-color: var(--accent, var(--color-primary));
   background: rgba(59,130,246,.12);
-  box-shadow: 0 0 0 1px var(--accent, #3B82F6);
+  box-shadow: 0 0 0 1px var(--accent, var(--color-primary));
 }
 
 /* Modèle sélectionné en mode council manuel */
 .model-card.selected {
-  border-color: var(--accent, #3B82F6);
+  border-color: var(--accent, var(--color-primary));
   background: rgba(59,130,246,.12);
-  box-shadow: 0 0 0 1px var(--accent, #3B82F6);
+  box-shadow: 0 0 0 1px var(--accent, var(--color-primary));
 }

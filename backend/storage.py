@@ -532,3 +532,71 @@ def save_preferences(prefs: Dict[str, Any]):
     current = get_preferences()
     current.update(prefs)
     _write_json(Path(PREFERENCES_FILE), current)
+
+
+# ── Pending validations (Mode Caféine) ────────────────────────────────────────
+
+def save_pending_validation(
+    conversation_id: str,
+    user_id: str,
+    chairman_output: str,
+    stage3_result: Optional[Dict] = None,
+    stage1_results: Optional[list] = None,
+    stage2_results: Optional[list] = None,
+    user_query: str = "",
+    models: Optional[list] = None,
+) -> str:
+    """Sauvegarde une réponse Chairman en attente de validation humaine."""
+    import uuid as _uuid
+    from . import db as _db_module
+    vid = str(_uuid.uuid4())
+    _db_module._table("pending_validations").insert({
+        "id": vid,
+        "conversation_id": conversation_id,
+        "user_id": user_id,
+        "chairman_output": chairman_output,
+        "stage3_result": stage3_result,
+        "stage1_results": stage1_results or [],
+        "stage2_results": stage2_results or [],
+        "user_query": user_query,
+        "models": models or [],
+        "status": "pending",
+        "created_at": datetime.utcnow().isoformat(),
+        "resolved_at": None,
+        "resolution": None,
+    })
+    return vid
+
+
+def get_pending_validation_by_conv(conversation_id: str) -> Optional[Dict]:
+    """Récupère la validation en attente pour une conversation (expire > 30 min)."""
+    from datetime import timedelta
+    from . import db as _db_module
+    tbl = _db_module._table("pending_validations")
+    Q   = _db_module.Q
+    cutoff = (datetime.utcnow() - timedelta(minutes=30)).isoformat()
+    # Expirer les anciennes
+    tbl.update({"status": "expired"}, (Q.status == "pending") & (Q.created_at < cutoff))
+    results = tbl.search((Q.conversation_id == conversation_id) & (Q.status == "pending"))
+    return results[0] if results else None
+
+
+def resolve_pending_validation(
+    validation_id: str,
+    action: str,
+    modified_text: Optional[str] = None,
+    relaunch_instructions: Optional[str] = None,
+):
+    """Résout une validation (approve/modify/relaunch/reject)."""
+    from . import db as _db_module
+    tbl = _db_module._table("pending_validations")
+    Q   = _db_module.Q
+    tbl.update({
+        "status": action,
+        "resolved_at": datetime.utcnow().isoformat(),
+        "resolution": {
+            "action": action,
+            "modified_text": modified_text,
+            "relaunch_instructions": relaunch_instructions,
+        },
+    }, Q.id == validation_id)

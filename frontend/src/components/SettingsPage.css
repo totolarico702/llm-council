@@ -116,5 +116,5 @@
   background: var(--accent); border: 1px solid var(--accent);
   border-radius: 6px; color: #fff; cursor: pointer; transition: all .15s;
 }
-.sp-btn-save:hover:not(:disabled) { background: #2563EB; }
+.sp-btn-save:hover:not(:disabled) { background: var(--color-primary-hover); }
 .sp-btn-save:disabled { opacity: .35; cursor: not-allowed; }

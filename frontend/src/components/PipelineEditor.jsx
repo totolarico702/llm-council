@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useModels } from '../modelsStore';
 import { apiFetch } from '../api';
 import { ROUTES } from '../api/routes';
 import PipelineAssistant from './PipelineAssistant';
@@ -277,10 +276,10 @@ function NodePanel({ node, availableModels, defaultModel, localModels, ollamaAva
                 Par défaut ({(defaultModel || 'mistral-medium-3').split('/').pop()})
               </option>
               {node.model && !availableModels.find(m => m.id === node.model) && (
-                <option value={node.model}>{node.model}</option>
+                <option value={node.model}>⚠️ {node.model.split('/').pop()} (non autorisé)</option>
               )}
               {availableModels.length === 0 && (
-                <option disabled>Chargement des modèles…</option>
+                <option disabled>Aucun modèle autorisé — configurez-les dans l&apos;AdminPanel</option>
               )}
               {availableModels.map(m => (
                 <option key={m.id} value={m.id}>
@@ -336,7 +335,7 @@ export default function PipelineEditor({ group, onSave, onClose }) {
   const [edges, setEdges]           = useState([]); // [{from, to}]
   const [selectedId, setSelectedId] = useState(null);
   const [pipelineName, setPipelineName] = useState('');
-  const availableModels = useModels(); // store global — déjà chargé par App.jsx
+  const [availableModels, setAvailableModels] = useState([]); // liste allowed-models
   const [defaultModel,    setDefaultModel]    = useState('mistralai/mistral-medium-3');
   const [localModels,     setLocalModels]     = useState([]);
   const [ollamaAvailable, setOllamaAvailable] = useState(false);
@@ -400,19 +399,32 @@ export default function PipelineEditor({ group, onSave, onClose }) {
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { panValRef.current = pan; }, [pan]);
 
-  // Charger le modèle par défaut + modèles locaux Ollama au montage
+  // Charger le modèle par défaut + modèles locaux Ollama + allowed-models au montage
   useEffect(() => {
     apiFetch(ROUTES.admin.settings)
-      .then(r => r.ok ? r.json() : null)
+      .then(r => r?.ok ? r.json() : null)
       .then(s => { if (s?.default_model) setDefaultModel(s.default_model); })
       .catch(() => {});
 
     apiFetch(ROUTES.local.models)
-      .then(r => r.ok ? r.json() : null)
+      .then(r => r?.ok ? r.json() : null)
       .then(data => {
         if (!data) return;
         setOllamaAvailable(data.available || false);
         setLocalModels(Array.isArray(data.models) ? data.models : []);
+      })
+      .catch(() => {});
+
+    apiFetch(ROUTES.models.allowed)
+      .then(r => r?.ok ? r.json() : [])
+      .then(data => {
+        const list = Array.isArray(data) ? data : [];
+        setAvailableModels(list.map(m => ({
+          id:   m.model_id,
+          name: m.name || m.model_id,
+          tags: m.tags || [],
+          cost_stars: m.cost_stars || 0,
+        })));
       })
       .catch(() => {});
   }, []);

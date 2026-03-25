@@ -58,7 +58,7 @@
   border-radius: 8px; color: #fff; font-weight: 700;
   cursor: pointer; white-space: nowrap; transition: background .15s;
 }
-.test-key-btn:hover:not(:disabled) { background: #2563EB; }
+.test-key-btn:hover:not(:disabled) { background: var(--color-primary-hover); }
 .test-key-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 .key-status {
@@ -103,7 +103,7 @@
   border-radius: 9px; color: #fff; font-size: 13px;
   font-weight: 700; cursor: pointer; transition: background .15s;
 }
-.nav-next:hover:not(:disabled) { background: #2563EB; }
+.nav-next:hover:not(:disabled) { background: var(--color-primary-hover); }
 .nav-next:disabled { opacity: .35; cursor: not-allowed; }
 .nav-finish {
   padding: 11px 26px; background: var(--ok); border: none;
@@ -111,5 +111,5 @@
   font-weight: 700; cursor: pointer; transition: all .15s;
   box-shadow: 0 4px 18px rgba(63,185,80,.25);
 }
-.nav-finish:hover:not(:disabled) { background: #2ea043; }
+.nav-finish:hover:not(:disabled) { background: color-mix(in srgb, var(--color-success) 80%, #000); }
 .nav-finish:disabled { opacity: .4; cursor: not-allowed; }
