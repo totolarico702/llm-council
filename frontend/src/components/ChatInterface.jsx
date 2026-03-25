@@ -7,6 +7,8 @@ import Stage2 from './Stage2';
 import Stage3 from './Stage3';
 import ModelSelector from './ModelSelector';
 import RAADPanel from './RAADPanel';
+import CaffeineValidation from './CaffeineValidation';
+import FeedbackBar from './FeedbackBar';
 import './ChatInterface.css';
 
 const DEFAULT_MODELS = [
@@ -195,14 +197,18 @@ export default function ChatInterface({
   conversation,
   onSendMessage,
   isLoading,
+  cafeinePending = null,
+  onValidate,
 }) {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [selectedModels, setSelectedModels] = useState(DEFAULT_MODELS);
   const [pipelineNodes,  setPipelineNodes]  = useState(null); // nodes DAG si pipeline nodal actif
   const [webSearchMode, setWebSearchMode] = useState('none');
+  const [caffeineMode, setCaffeineMode] = useState(false);
   const [execPanelOpen, setExecPanelOpen] = useState(false);
   const [execMsgIdx,    setExecMsgIdx]    = useState(null);
+  const caffeineNotifRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef   = useRef(null);
   const textareaRef    = useRef(null);
@@ -300,7 +306,7 @@ export default function ChatInterface({
     const fullContent = documentContent ? `${documentContent}\n\n${userText}` : userText;
     const attachmentNames = attachments.map(a => a.name);
 
-    onSendMessage(fullContent, selectedModels, webSearchMode, documentContent, attachmentNames, pipelineNodes);
+    onSendMessage(fullContent, selectedModels, webSearchMode, documentContent, attachmentNames, pipelineNodes, caffeineMode);
     setInput('');
     setAttachments([]);
   };
@@ -374,23 +380,33 @@ export default function ChatInterface({
           Send
         </button>
       </form>
-      <ModelSelector
-        selectedModels={selectedModels}
-        onModelsChange={(val) => {
-          if (val && val.__pipeline_id) {
-            // Pipeline nodal : stocker les nodes, vider selectedModels
-            setPipelineNodes(val.nodes || null);
-            setSelectedModels([]);
-          } else {
-            // Sélection manuelle de modèles : pas de pipeline DAG
-            setPipelineNodes(null);
-            setSelectedModels(val);
-          }
-        }}
-        webSearchMode={webSearchMode}
-        onWebSearchModeChange={setWebSearchMode}
-        disabled={isLoading}
-      />
+      <div className="input-toolbar">
+        <ModelSelector
+          selectedModels={selectedModels}
+          onModelsChange={(val) => {
+            if (val && val.__pipeline_id) {
+              setPipelineNodes(val.nodes || null);
+              setSelectedModels([]);
+            } else {
+              setPipelineNodes(null);
+              setSelectedModels(val);
+            }
+          }}
+          webSearchMode={webSearchMode}
+          onWebSearchModeChange={setWebSearchMode}
+          disabled={isLoading}
+        />
+        {/* Toggle Mode Caféine */}
+        <button
+          type="button"
+          className={`caffeine-toggle${caffeineMode ? ' active' : ''}`}
+          onClick={() => setCaffeineMode(v => !v)}
+          title="Mode Caféine — vous validez la réponse avant envoi"
+        >
+          ☕ {caffeineMode ? 'Caféine ON' : 'Caféine OFF'}
+          {caffeineMode && cafeinePending && <span className="caffeine-dot" />}
+        </button>
+      </div>
     </div>
   );
 
@@ -408,6 +424,17 @@ export default function ChatInterface({
 
   return (
     <div className="chat-interface">
+      {/* Bandeau notification validation en attente */}
+      {cafeinePending && (
+        <div
+          className="caffeine-banner"
+          ref={caffeineNotifRef}
+          onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+        >
+          ☕ Une réponse attend votre validation ↓
+        </div>
+      )}
+
       <div className="messages-container">
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
@@ -489,6 +516,13 @@ export default function ChatInterface({
                     </div>
                   )}
                   {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}
+                  {msg.stage3 && !msg.loading?.stage3 && (
+                    <FeedbackBar
+                      conversationId={conversation?.id}
+                      model={msg.stage3?.model}
+                      stage="chairman"
+                    />
+                  )}
                   </>)}
                 </div>
               )}
@@ -496,11 +530,19 @@ export default function ChatInterface({
           ))
         )}
 
-        {isLoading && (
+        {isLoading && !cafeinePending && (
           <div className="loading-indicator">
             <div className="spinner"></div>
             <span>Consulting the council...</span>
           </div>
+        )}
+
+        {/* Interface de validation Mode Caféine */}
+        {cafeinePending && (
+          <CaffeineValidation
+            pending={cafeinePending}
+            onValidate={onValidate}
+          />
         )}
 
         <div ref={messagesEndRef} />

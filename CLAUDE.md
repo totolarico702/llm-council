@@ -2,22 +2,44 @@
 
 This file contains technical details, architectural decisions, and important implementation notes for future development sessions.
 
-## Status — 2026-03-23
+## Status — 2026-03-25 — V2 ✅
+
+**V2 terminée** — toutes les fonctionnalités du brief V2 sont implémentées.
+
+**Nouvelles fonctionnalités V2 :**
+- Mode Caféine (validation humaine post-Chairman avant affichage final)
+- Grammaire .cog v1.0 (export/import/assistant pipeline en langage naturel)
+- DAG engine complet (RAG Search, Fact-check, MCP, Condition, Merge, parallèle, boucles)
+- PipelineEditor 3 colonnes + persistance TinyDB + modification par prompt
+- CSS centralisé avec variables de branding (`frontend/src/styles/`)
+- Scoring qualité LLM — auto (LLM juge) + manuel (👍 👎 ⭐)
+- Simulation de coûts par pipeline (badge 💰 en temps réel)
+- Client API centralisé (`api/client.js` + `api/routes.js`)
+- JWT en httpOnly cookie + refresh token 7j
+- Rate limiting login (5/min via slowapi)
+- structlog configuré, TinyDB pour usage/scores
+- Tests Pytest (`backend/tests/`)
+
+**Stack V2 — nouveaux fichiers :**
+- `backend/scorer.py` — scoring qualité LLM (auto + user)
+- `backend/cost_estimator.py` — simulation coûts par pipeline
+- `backend/cog_parser.py` — grammaire .cog v1.0
+- `backend/dag_engine.py` — moteur DAG parallèle
+- `backend/logging_config.py` — structlog
+- `backend/errors.py` — erreurs centralisées
+- `frontend/src/styles/` — CSS centralisé (variables, reset, components, layout, dark theme)
+- `frontend/src/components/PipelineAssistant.jsx` — assistant pipeline
+- `frontend/src/components/CaffeineValidation.jsx` — validation humaine Mode Caféine
+- `frontend/src/components/FeedbackBar.jsx` — boutons 👍 👎 ⭐ sous les réponses
 
 **Prérequis V2 appliqués** (BRIEF_PREREQUIS_V2.md exécuté) :
 - Session 1 ✅ : `auth.py` supprimé, `db.py` est l'unique source d'authentification
-- Session 2 ✅ : JWT en httpOnly cookie (`llmc_token` + `llmc_refresh`), refresh token 7j, `must_change_password` sur admin par défaut, routes `/auth/refresh` + `/auth/logout` + `/auth/change-password`
-- Session 3 ✅ : Rate limiting login (5/min via slowapi), upload limité à 100 Mo (env `RAG_UPLOAD_MAX_MB`), extraction PDF/DOCX dans `asyncio.to_thread`
-- Session 4 ✅ : structlog configuré (`logging_config.py`), `errors.py` créé, `usage_logger.py` migré vers TinyDB, `ErrorBoundary.jsx` en place
-- Session 5 ✅ : `score_threshold` effectif dans `rag_store.py`, timeout global DAG 300s, warning stage2 parsing vide, `chromadb-client` supprimé
+- Session 2 ✅ : JWT en httpOnly cookie (`llmc_token` + `llmc_refresh`), refresh token 7j, `must_change_password` sur admin par défaut
+- Session 3 ✅ : Rate limiting login (5/min via slowapi), upload limité à 100 Mo
+- Session 4 ✅ : structlog configuré, `errors.py` créé, `usage_logger.py` migré vers TinyDB
+- Session 5 ✅ : `score_threshold` effectif dans `rag_store.py`, timeout global DAG 300s
 - Session 6 ✅ : Tests Pytest créés (`backend/tests/` — auth, users, dag, rag)
-- Session 7 ✅ : Toutes les routes préfixées `/api/v1/` (APIRouter), briefs déplacés dans `docs/briefs/`, `api.js` migré cookies + `/api/v1`
-
-**Ce qui reste pour V2** :
-- Remplacer tous les `print()` restants par `log = get_logger()` (structlog)
-- Tester la suite de tests (`pytest backend/tests/`)
-- Compléter le `must_change_password` redirect côté frontend
-- Installer les nouvelles dépendances : `uv add slowapi structlog`
+- Session 7 ✅ : Toutes les routes préfixées `/api/v1/` (APIRouter)
 
 ## Project Overview
 

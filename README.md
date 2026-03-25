@@ -104,19 +104,30 @@ CHAIRMAN_MODEL = "mistralai/mistral-medium-3"
 
 ---
 
-## Fonctionnalités V1
+## Fonctionnalités V2
 
 ### Délibération multi-LLM
 - Stage 1 / 2 / 3 avec anonymisation des modèles en Stage 2
 - Chairman configurable par pipeline
 - Fallback automatique si un modèle est indisponible
 - Trace d'exécution DAG en temps réel
+- **Mode Caféine** : validation humaine obligatoire avant affichage de la réponse finale
 
 ### Pipelines DAG
-- Éditeur visuel de pipelines (PipelineEditor)
-- Nœuds configurables : LLM, RAG Search, outils
+- Éditeur visuel en **3 colonnes** : assistant IA | canvas | config nœud
+- **Grammaire .cog v1.0** : export/import de pipelines en JSON reproductible
+- Nœuds disponibles : LLM, RAG Search, Fact-check, Web Search, MCP, Condition, Merge, boucles
+- **Assistant pipeline** : créer ou modifier un pipeline en langage naturel
+- Persistance TinyDB avec auto-save toutes les 30s et indicateur `● Non sauvegardé`
+- **Simulation de coûts** : badge 💰 en temps réel dans la toolbar + popup détail par nœud
 - Toggle cloud (OpenRouter) / local (Ollama) par nœud
 - Timeout global 300s, timeout par nœud 30s
+
+### Scoring qualité LLM
+- **Score automatique** après chaque réponse Chairman (LLM juge : mistral-medium-3)
+- **Feedback manuel** 👍 👎 ⭐ sous chaque réponse Chairman
+- Widget AdminPanel > État modèles : tableau pertinence / précision / format / global
+- Filtre par période 7j / 30j / 90j
 
 ### RAG — Mémoire organisationnelle
 - Indexation de documents (PDF, DOCX, TXT, MD) via LanceDB
@@ -131,6 +142,7 @@ CHAIRMAN_MODEL = "mistralai/mistral-medium-3"
 - Isolation complète des conversations par utilisateur
 - Permissions granulaires : `rag_read`, `rag_write`, `admin`
 - Rate limiting sur le login (5 requêtes/min par IP)
+- `must_change_password` à la première connexion admin
 
 ### Modèles locaux
 - Intégration Ollama (mistral:latest par défaut)
@@ -138,6 +150,8 @@ CHAIRMAN_MODEL = "mistralai/mistral-medium-3"
 - Toggle cloud/local par nœud dans le PipelineEditor
 
 ### Interface
+- **CSS centralisé** avec variables de branding (`frontend/src/styles/`) — thème dark
+- **Client API centralisé** (`api/client.js` + `api/routes.js`)
 - Dashboard Comex (lien partageable sans authentification)
 - Panel état modèles temps réel (🟢🟡🔴)
 - Support multilingue (français forcé par défaut)
@@ -150,7 +164,7 @@ CHAIRMAN_MODEL = "mistralai/mistral-medium-3"
 |-----------|-------------|
 | Backend | FastAPI (Python 3.10+), uv |
 | Frontend | React 18 + Vite |
-| Base de données | TinyDB (métadonnées) + LanceDB (vecteurs RAG) |
+| Base de données | TinyDB (métadonnées + scores + pipelines) + LanceDB (vecteurs RAG) |
 | LLM routing | OpenRouter API |
 | LLM local | Ollama |
 | Auth | JWT httpOnly cookie + bcrypt |
@@ -210,13 +224,20 @@ llm-council/
 
 ## Roadmap
 
-### V2 (en cours)
+### V1 ✅ Terminé
+- Délibération 3 étapes, interface basique, RAG, gestion utilisateurs
+
+### V2 ✅ Terminé
 - Grammaire cognitive `.cog` — format de pipeline reproductible
 - Mode Caféine — validation humaine post-Chairman
-- Scoring qualité LLM par réponse
+- Scoring qualité LLM (auto + manuel)
 - Simulation de coûts par pipeline
+- PipelineEditor 3 colonnes + assistant IA + persistance
+- CSS centralisé + variables branding
+- JWT httpOnly cookie + refresh token
+- Tests Pytest
 
-### V3
+### V3 — en cours
 - Multi-agents avec orchestration Claude Code
 - Open-core / publication
 - CI/CD GitHub Actions

@@ -1,7 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { api, auth, apiFetch } from '../api';
-import { ROUTES } from '../api/routes';
-import PipelineEditor from './PipelineEditor';
+import { useState, useEffect } from 'react';
+import { api, auth } from '../api';
 import './Sidebar.css';
 
 export default function Sidebar({
@@ -32,52 +30,9 @@ export default function Sidebar({
   const [renameConvValue,   setRenameConvValue]   = useState('');
   const [draggedConvId,     setDraggedConvId]     = useState(null);
   const [dropTargetId,      setDropTargetId]      = useState(null);
-  const [pipelines,         setPipelines]         = useState([]);
-  const [editingPipeline,   setEditingPipeline]   = useState(null); // null | pipeline obj
-  const [pipelineMenu,      setPipelineMenu]      = useState(null); // null | pipeline id
-  const pipelineMenuRef = useRef(null);
-
   const fetchCredits = async () => {
     try { setCredits(await api.getCredits()); }
     catch (err) { console.error('Failed to fetch credits:', err); }
-  };
-
-  const loadPipelines = async () => {
-    try {
-      const res = await apiFetch(ROUTES.pipelines.list);
-      if (res.ok) setPipelines(await res.json());
-    } catch (err) { console.error('Failed to load pipelines:', err); }
-  };
-
-  const handleDeletePipeline = async (e, id) => {
-    e.stopPropagation();
-    setPipelineMenu(null);
-    if (!confirm('Supprimer ce pipeline ?')) return;
-    await apiFetch(ROUTES.pipelines.delete(id), { method: 'DELETE' });
-    loadPipelines();
-  };
-
-  const handleDuplicatePipeline = async (e, pipeline) => {
-    e.stopPropagation();
-    setPipelineMenu(null);
-    const res = await apiFetch(ROUTES.pipelines.create, {
-      method: 'POST',
-      body: JSON.stringify({ name: `${pipeline.name} (copie)`, cog: pipeline.cog }),
-    });
-    if (res.ok) loadPipelines();
-  };
-
-  const handleExportPipelineCog = async (e, id, name) => {
-    e.stopPropagation();
-    setPipelineMenu(null);
-    const res = await apiFetch(ROUTES.pipelines.exportCog(id));
-    if (!res?.ok) return;
-    const cog  = await res.json();
-    const blob = new Blob([JSON.stringify(cog, null, 2)], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `${(name || 'pipeline').toLowerCase().replace(/\s+/g, '-')}.cog.json`; a.click();
-    URL.revokeObjectURL(url);
   };
 
   const loadProjects = async () => {
@@ -91,18 +46,8 @@ export default function Sidebar({
   useEffect(() => {
     fetchCredits();
     loadProjects();
-    loadPipelines();
     const interval = setInterval(fetchCredits, 30000);
-    // Fermer le menu pipeline au clic extérieur
-    const handleClickOutside = (e) => {
-      if (pipelineMenuRef.current && !pipelineMenuRef.current.contains(e.target))
-        setPipelineMenu(null);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => { clearInterval(interval); };
   }, []);
 
   const handleCreateProject = async () => {
@@ -182,7 +127,6 @@ export default function Sidebar({
 
 
   return (
-    <>
     <div className="sidebar">
 
       {/* ── Header ───────────────────────────────────────────────────── */}
@@ -214,37 +158,7 @@ export default function Sidebar({
       {/* ── Liste conversations / projets ─────────────────────────────── */}
       <div className="conversation-list">
 
-        {/* ── Section Pipelines ── */}
-        <div className="section-label">
-          <span>🔧 Pipelines</span>
-          <button className="add-project-btn" title="Nouveau pipeline"
-            onClick={() => setEditingPipeline({})}>+</button>
-        </div>
-
-        {pipelines.length === 0 && (
-          <div className="no-conversations" style={{ fontSize: 11 }}>Aucun pipeline</div>
-        )}
-
-        {pipelines.map(p => (
-          <div key={p.id} className="pipeline-sidebar-item" onClick={() => setEditingPipeline(p)}>
-            <span className="pipeline-sidebar-icon">⬡</span>
-            <span className="pipeline-sidebar-name">{p.name || 'Sans nom'}</span>
-            <div style={{ position: 'relative' }} ref={pipelineMenu === p.id ? pipelineMenuRef : null}>
-              <button className="pipeline-sidebar-menu-btn"
-                onClick={e => { e.stopPropagation(); setPipelineMenu(pipelineMenu === p.id ? null : p.id); }}
-                title="Actions">···</button>
-              {pipelineMenu === p.id && (
-                <div className="pipeline-sidebar-dropdown">
-                  <button onClick={e => handleDuplicatePipeline(e, p)}>📋 Dupliquer</button>
-                  <button onClick={e => handleExportPipelineCog(e, p.id, p.name)}>📤 Exporter .cog</button>
-                  <button className="danger" onClick={e => handleDeletePipeline(e, p.id)}>🗑 Supprimer</button>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-
-        <div className="section-label" style={{ marginTop: 12 }}>
+          <div className="section-label" style={{ marginTop: 12 }}>
           <span>📁 Projets</span>
           <button className="add-project-btn" onClick={() => setShowNewProject(v => !v)} title="Nouveau projet">+</button>
         </div>
@@ -424,15 +338,5 @@ export default function Sidebar({
       </div>
 
     </div>
-
-    {/* ── PipelineEditor modal ── */}
-    {editingPipeline !== null && (
-      <PipelineEditor
-        group={editingPipeline}
-        onSave={(updated) => { loadPipelines(); if (updated?.id) setEditingPipeline(updated); }}
-        onClose={() => setEditingPipeline(null)}
-      />
-    )}
-    </>
   );
 }

@@ -945,6 +945,83 @@ function OllamaManager({ localInfo, onRefresh }) {
   );
 }
 
+// ── Widget Scoring qualité ────────────────────────────────────────────────────
+function ScoringWidget() {
+  const [summary, setSummary] = useState([]);
+  const [days,    setDays]    = useState(30);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch(`${ROUTES.scores?.summary || '/api/v1/scores/summary'}?days=${days}`);
+      if (res?.ok) setSummary(await res.json());
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  }, [days]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const fmt = (v) => v != null ? `${v.toFixed(1)}/10` : '—';
+
+  return (
+    <div style={{ marginTop: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--dim)',
+                     textTransform: 'uppercase', letterSpacing: '.5px', margin: 0 }}>
+          ⭐ Scoring qualité LLM
+        </h3>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[7, 30, 90].map(d => (
+            <button key={d}
+              onClick={() => setDays(d)}
+              className={days === d ? 'adm-btn-primary adm-btn-sm' : 'adm-btn-ghost adm-btn-sm'}
+              style={{ padding: '3px 10px', fontSize: 11 }}>
+              {d}j
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="adm-loading" style={{ padding: '16px 0' }}>Chargement…</div>
+      ) : summary.length === 0 ? (
+        <div className="adm-empty">Aucun score disponible pour cette période.</div>
+      ) : (
+        <table className="adm-table" style={{ fontSize: 12 }}>
+          <thead>
+            <tr>
+              <th>Modèle</th>
+              <th style={{ textAlign: 'center' }}>Pertinence</th>
+              <th style={{ textAlign: 'center' }}>Précision</th>
+              <th style={{ textAlign: 'center' }}>Format</th>
+              <th style={{ textAlign: 'center' }}>Global</th>
+              <th style={{ textAlign: 'center' }}>N</th>
+            </tr>
+          </thead>
+          <tbody>
+            {summary.map(s => (
+              <tr key={s.model}>
+                <td style={{ fontFamily: 'monospace', fontSize: 11 }}>
+                  {s.model_short || s.model}
+                </td>
+                <td style={{ textAlign: 'center' }}>{fmt(s.relevance)}</td>
+                <td style={{ textAlign: 'center' }}>{fmt(s.accuracy)}</td>
+                <td style={{ textAlign: 'center' }}>{fmt(s.format)}</td>
+                <td style={{ textAlign: 'center', fontWeight: 700,
+                             color: s.overall >= 7 ? 'var(--ok)' : s.overall >= 5 ? 'var(--warn)' : 'var(--danger)' }}>
+                  {fmt(s.overall)}
+                </td>
+                <td style={{ textAlign: 'center', color: 'var(--dim)' }}>{s.n}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 // ── Onglet État Modèles ───────────────────────────────────────────────────────
 function ModelStatusTab() {
   const [status,    setStatus]    = useState([]);
@@ -1102,6 +1179,8 @@ function ModelStatusTab() {
           </table>
         )}
       </div>
+
+      <ScoringWidget />
 
       <div style={{ marginTop: 14, fontSize: 11, color: 'var(--dim)' }}>
         🟢 Disponible &nbsp;·&nbsp; 🟡 Dégradé (1 endpoint) &nbsp;·&nbsp; 🔴 Indisponible &nbsp;·&nbsp;

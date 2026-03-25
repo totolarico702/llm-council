@@ -105,7 +105,7 @@ if errorlevel 1 (
     pause & exit /b 1
 )
 
-uv add slowapi structlog >nul 2>&1
+uv add slowapi structlog httpx >nul 2>&1
 echo  [OK] Dependances Python installees
 
 echo.

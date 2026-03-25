@@ -24,7 +24,9 @@ export const ROUTES = {
     delete:         (id) => `${BASE}/conversations/${id}`,
     message:        (id) => `${BASE}/conversations/${id}/message`,
     stream:         (id) => `${BASE}/conversations/${id}/message/stream`,
-    setProject:     (id) => `${BASE}/conversations/${id}/project`,
+    setProject:        (id) => `${BASE}/conversations/${id}/project`,
+    pendingValidation: (id) => `${BASE}/conversations/${id}/pending-validation`,
+    validate:          (id) => `${BASE}/conversations/${id}/validate`,
   },
 
   // ── Projects ───────────────────────────────────────────
@@ -78,6 +80,7 @@ export const ROUTES = {
     allowed:      `${BASE}/pipelines/allowed`,
     importCog:    `${BASE}/pipelines/import-cog`,
     validateCog:  `${BASE}/pipelines/validate-cog`,
+    estimateCost: `${BASE}/pipelines/estimate-cost`,
     exportCog:    (id) => `${BASE}/pipelines/${id}/export-cog`,
     assistant:    `${BASE}/pipelines/assistant`,
   },
@@ -92,6 +95,13 @@ export const ROUTES = {
   },
 
   // ── Credits ────────────────────────────────────────────
+  // ── Scores qualité LLM ────────────────────────────────────────────────────
+  scores: {
+    submit:   `${BASE}/scores`,
+    summary:  `${BASE}/scores/summary`,
+    adminAll: `${BASE}/admin/scores`,
+  },
+
   credits:          `${BASE}/credits`,
 
   // ── Upload (fichier générique) ─────────────────────────

@@ -353,10 +353,34 @@ export default function PipelineEditor({ group, onSave, onClose }) {
   const [importError, setImportError]     = useState(null);
   const importFileRef = useRef(null);
 
+  // ── Simulation de coûts ────────────────────────────────────────────────────
+  const [costEstimate, setCostEstimate]   = useState(null);  // { total_usd, node_breakdown, disclaimer }
+  const [costPopup, setCostPopup]         = useState(false);
+  const costDebounceRef = useRef(null);
+
   const showToast = (msg, type = 'ok') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
+
+  // ── Estimation de coût — debounce 1s à chaque modification des nœuds ──────
+  useEffect(() => {
+    if (costDebounceRef.current) clearTimeout(costDebounceRef.current);
+    costDebounceRef.current = setTimeout(async () => {
+      if (nodes.length === 0) { setCostEstimate(null); return; }
+      try {
+        const res = await apiFetch(ROUTES.pipelines.estimateCost, {
+          method: 'POST',
+          body: JSON.stringify({ pipeline: { nodes, edges } }),
+        });
+        if (res && res.ok) {
+          const data = await res.json();
+          setCostEstimate(data);
+        }
+      } catch (_) { /* silencieux */ }
+    }, 1000);
+    return () => clearTimeout(costDebounceRef.current);
+  }, [nodes, edges]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Drag node
   const dragRef = useRef(null); // { nodeId, startX, startY, origX, origY }
@@ -1009,6 +1033,46 @@ export default function PipelineEditor({ group, onSave, onClose }) {
               <button className="pe-cancel-connect" onClick={() => setConnectingFrom(null)}>✕</button>
             </span>
           )}
+
+          {/* ── Badge coût estimé ── */}
+          {costEstimate !== null && (
+            <div className="pe-cost-badge-wrapper">
+              <button
+                className="pe-cost-badge"
+                onClick={() => setCostPopup(v => !v)}
+                title="Coût estimé par requête — cliquer pour le détail"
+              >
+                💰 ~${costEstimate.total_usd === 0 ? '0.000' : costEstimate.total_usd.toFixed(4)} / req
+              </button>
+              {costPopup && (
+                <div className="pe-cost-popup">
+                  <div className="pe-cost-popup-header">
+                    <span>Coût estimé par requête</span>
+                    <button className="pe-cost-popup-close" onClick={() => setCostPopup(false)}>✕</button>
+                  </div>
+                  <table className="pe-cost-table">
+                    <tbody>
+                      {costEstimate.node_breakdown.map(n => (
+                        <tr key={n.node_id}>
+                          <td className="pe-cost-node">{n.label || n.node_id}</td>
+                          <td className="pe-cost-model">{n.model.split('/').pop()}</td>
+                          <td className={`pe-cost-value ${n.is_local ? 'pe-cost-free' : ''}`}>
+                            {n.is_local ? '$0.00' : `$${n.cost_usd.toFixed(4)}`}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="pe-cost-total-row">
+                        <td colSpan={2}>TOTAL</td>
+                        <td className="pe-cost-value">${costEstimate.total_usd.toFixed(4)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div className="pe-cost-disclaimer">{costEstimate.disclaimer}</div>
+                </div>
+              )}
+            </div>
+          )}
+
           <button className="pe-close-btn" onClick={onClose}>✕</button>
         </div>
 

@@ -14,6 +14,7 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation,   setCurrentConversation]   = useState(null);
   const [isLoading,             setIsLoading]             = useState(false);
+  const [cafeinePending,        setCafeinePending]        = useState(null); // { validation_id, chairman_output, stage1, stage2, stage3 }
   const [language,              setLanguage]              = useState(
     () => localStorage.getItem('llmc_lang') || auth.getUser()?.language || 'fr'
   );
@@ -41,7 +42,24 @@ function App() {
   };
 
   const loadConversation = async (id) => {
-    try { setCurrentConversation(await api.getConversation(id)); }
+    try {
+      const conv = await api.getConversation(id);
+      setCurrentConversation(conv);
+      // Vérifier si une validation est en attente (reload de page)
+      const pv = await api.getPendingValidation(id);
+      if (pv?.pending && pv.validation) {
+        const v = pv.validation;
+        setCafeinePending({
+          validation_id:   v.id,
+          chairman_output: v.chairman_output,
+          stage1_results:  v.stage1_results,
+          stage2_results:  v.stage2_results,
+          stage3_result:   v.stage3_result,
+        });
+      } else {
+        setCafeinePending(null);
+      }
+    }
     catch (e) { console.error('Failed to load conversation:', e); }
   };
 
@@ -104,8 +122,9 @@ function App() {
     } catch (e) { console.error('Failed to delete conversation:', e); }
   };
 
-  const handleSendMessage = async (content, models, webSearchMode = 'none', documentContent = null, attachmentNames = [], pipelineNodes = null) => {
+  const handleSendMessage = async (content, models, webSearchMode = 'none', documentContent = null, attachmentNames = [], pipelineNodes = null, caffeineMode = false) => {
     if (!currentConversationId) return;
+    setCafeinePending(null);
     setIsLoading(true);
     try {
       setCurrentConversation(prev => ({
@@ -126,6 +145,15 @@ function App() {
         currentConversationId, content, models, webSearchMode,
         (eventType, event) => {
           switch (eventType) {
+            case 'validation_required':
+              setCafeinePending({
+                validation_id:   event.validation_id,
+                chairman_output: event.chairman_output,
+                stage1_results:  null,  // déjà dans le message via SSE
+                stage2_results:  null,
+              });
+              setIsLoading(false);
+              break;
             // ── Events DAG (pipeline nodal) ──────────────────────────────
             case 'dag_start':
               setCurrentConversation(prev => {
@@ -312,11 +340,61 @@ function App() {
         {},
         documentContent,
         pipelineNodes,
+        caffeineMode,
       );
     } catch (e) {
       console.error('Failed to send message:', e);
       setCurrentConversation(prev => ({ ...prev, messages: prev.messages.slice(0, -2) }));
       setIsLoading(false);
+    }
+  };
+
+  const handleValidate = async (action, payload = {}) => {
+    if (!currentConversationId || !cafeinePending) return;
+    try {
+      const res = await api.submitValidation(currentConversationId, {
+        validation_id: cafeinePending.validation_id,
+        action,
+        ...payload,
+      });
+      if (action === 'relaunch') {
+        // Nouvelle validation en attente
+        setCafeinePending({
+          validation_id:   res.validation_id,
+          chairman_output: res.chairman_output,
+          stage1_results:  cafeinePending.stage1_results,
+          stage2_results:  cafeinePending.stage2_results,
+        });
+      } else {
+        setCafeinePending(null);
+        if (action !== 'reject') {
+          // Ajouter stage3 au dernier message assistant
+          const s3 = res.stage3_result;
+          setCurrentConversation(prev => {
+            const msgs = [...prev.messages];
+            const last = msgs[msgs.length - 1];
+            if (last && last.role === 'assistant') {
+              last.stage3 = s3;
+              last.loading = { stage1: false, stage2: false, stage3: false };
+            }
+            return { ...prev, messages: msgs };
+          });
+        } else {
+          // Reject : ajouter message d'annulation
+          setCurrentConversation(prev => {
+            const msgs = [...prev.messages];
+            const last = msgs[msgs.length - 1];
+            if (last && last.role === 'assistant') {
+              last.stage3 = { model: 'system', response: '❌ Réponse rejetée par l\'utilisateur.' };
+              last.loading = { stage1: false, stage2: false, stage3: false };
+            }
+            return { ...prev, messages: msgs };
+          });
+        }
+        loadConversations();
+      }
+    } catch (e) {
+      console.error('Validation error:', e);
     }
   };
 
@@ -346,6 +424,8 @@ function App() {
             conversation={currentConversation}
             onSendMessage={handleSendMessage}
             isLoading={isLoading}
+            cafeinePending={cafeinePending}
+            onValidate={handleValidate}
           />
         )}
         {activeTab === 'admin' && auth.isAdmin() && (

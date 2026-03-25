@@ -50,6 +50,8 @@ from .dag_engine import execute_dag
 from .fallback_models import PRODUCTION_MODELS, is_production_safe
 from .config import DEFAULT_MODEL, DEFAULT_CHAIRMAN, MISTRAL_MODELS, DATA_DIR
 from .fs_browser import router as fs_router
+from . import scorer
+from . import cost_estimator
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
@@ -172,6 +174,7 @@ class SendMessageRequest(BaseModel):
     web_search_mode: str = "none"
     document_content: Optional[str] = None
     pipeline_nodes: Optional[List[Dict[str, Any]]] = None  # nodes DAG si pipeline nodal
+    cafeine_mode: bool = False  # Mode Caféine — validation humaine post-Chairman
 
 class ConversationMetadata(BaseModel):
     id: str
@@ -1823,7 +1826,6 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
                 stage3_result = await stage3_synthesize_final(
                     user_content, stage1_results, stage2_results,
                     chairman_model, request.web_search_mode, history)
-                yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
                 if stage3_result:
                     u = stage3_result.get("usage") or {}
                     log_usage(user_id=user_ctx["id"], user_login=user_ctx["login"],
@@ -1833,9 +1835,34 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
                               completion_tokens=u.get("completion_tokens", 0),
                               native_cost=u.get("cost"))
 
-                storage.add_assistant_message(
-                    conversation_id, stage1_results, stage2_results, stage3_result,
-                    owner_id=user_ctx.get("id"))
+                if request.cafeine_mode:
+                    # ── Mode Caféine : interception avant affichage ──────────
+                    vid = storage.save_pending_validation(
+                        conversation_id=conversation_id,
+                        user_id=user_ctx["id"],
+                        chairman_output=stage3_result.get("response", "") if stage3_result else "",
+                        stage3_result=stage3_result,
+                        stage1_results=stage1_results,
+                        stage2_results=stage2_results,
+                        user_query=user_content,
+                        models=list(council_models),
+                    )
+                    yield f"data: {json.dumps({'type': 'validation_required', 'validation_id': vid, 'chairman_output': stage3_result.get('response', '') if stage3_result else ''})}\n\n"
+                    # Ne pas sauvegarder le message assistant — attendre la décision
+                else:
+                    yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
+                    storage.add_assistant_message(
+                        conversation_id, stage1_results, stage2_results, stage3_result,
+                        owner_id=user_ctx.get("id"))
+                    # Score auto (fire-and-forget — non bloquant)
+                    if stage3_result and stage3_result.get("response"):
+                        asyncio.create_task(scorer.auto_score_response(
+                            question=user_content,
+                            response=stage3_result["response"],
+                            model=stage3_result.get("model", chairman_model),
+                            conversation_id=conversation_id,
+                            user_id=user_ctx.get("id", "unknown"),
+                        ))
 
             if title_task:
                 title = await title_task
@@ -1849,6 +1876,97 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
     return StreamingResponse(event_generator(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+
+# ── Mode Caféine — Validation humaine post-Chairman ──────────────────────────
+
+@api_v1.get("/conversations/{conversation_id}/pending-validation")
+async def get_pending_validation(conversation_id: str, user: dict = Depends(get_current_user)):
+    """Récupère la validation en attente pour une conversation (si elle existe)."""
+    val = storage.get_pending_validation_by_conv(conversation_id)
+    if not val:
+        return {"pending": False}
+    if val.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    return {"pending": True, "validation": val}
+
+
+@api_v1.post("/conversations/{conversation_id}/validate")
+async def submit_validation(conversation_id: str, body: dict,
+                            user: dict = Depends(get_current_user)):
+    """Soumet la décision humaine (approve / modify / relaunch / reject)."""
+    validation_id = body.get("validation_id")
+    action        = body.get("action")  # approve | modify | relaunch | reject
+    modified_text = body.get("modified_text")
+    relaunch_inst = body.get("relaunch_instructions")
+
+    if action not in ("approve", "modify", "relaunch", "reject"):
+        raise HTTPException(status_code=400, detail="action invalide")
+
+    val = storage.get_pending_validation_by_conv(conversation_id)
+    if not val or val["id"] != validation_id:
+        raise HTTPException(status_code=404, detail="Validation introuvable ou expirée")
+    if val.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    stage3_result   = val.get("stage3_result")
+    stage1_results  = val.get("stage1_results", [])
+    stage2_results  = val.get("stage2_results", [])
+
+    if action == "approve":
+        storage.resolve_pending_validation(validation_id, "approved")
+        storage.add_assistant_message(
+            conversation_id, stage1_results, stage2_results, stage3_result,
+            owner_id=user["id"])
+        return {"action": "approve", "stage3_result": stage3_result}
+
+    elif action == "modify":
+        if not modified_text:
+            raise HTTPException(status_code=400, detail="modified_text requis")
+        modified_stage3 = {**(stage3_result or {}), "response": modified_text, "_modified": True}
+        storage.resolve_pending_validation(validation_id, "modified", modified_text=modified_text)
+        storage.add_assistant_message(
+            conversation_id, stage1_results, stage2_results, modified_stage3,
+            owner_id=user["id"])
+        return {"action": "modify", "stage3_result": modified_stage3}
+
+    elif action == "relaunch":
+        # Relancer le Chairman avec les instructions additionnelles
+        user_query = val.get("user_query", "")
+        models     = val.get("models", [])
+        chairman_model = models[0] if models else None
+        augmented_query = (
+            f"{user_query}\n\n[Instructions supplémentaires pour le Chairman : {relaunch_inst}]"
+            if relaunch_inst else user_query
+        )
+        new_stage3 = await stage3_synthesize_final(
+            augmented_query, stage1_results, stage2_results, chairman_model)
+        storage.resolve_pending_validation(validation_id, "relaunched",
+                                           relaunch_instructions=relaunch_inst)
+        new_vid = storage.save_pending_validation(
+            conversation_id=conversation_id,
+            user_id=user["id"],
+            chairman_output=new_stage3.get("response", "") if new_stage3 else "",
+            stage3_result=new_stage3,
+            stage1_results=stage1_results,
+            stage2_results=stage2_results,
+            user_query=user_query,
+            models=models,
+        )
+        return {
+            "action": "relaunch",
+            "validation_id": new_vid,
+            "chairman_output": new_stage3.get("response", "") if new_stage3 else "",
+        }
+
+    else:  # reject
+        storage.resolve_pending_validation(validation_id, "rejected")
+        # Sauvegarder un message d'annulation
+        storage.add_assistant_message(
+            conversation_id, stage1_results, stage2_results,
+            {"model": "system", "response": "❌ Réponse rejetée par l'utilisateur."},
+            owner_id=user["id"])
+        return {"action": "reject"}
+
 
 # ── Projects ──────────────────────────────────────────────────────────────────
 
@@ -2065,6 +2183,14 @@ async def validate_cog(body: dict, _: dict = Depends(require_admin)):
         return {"valid": False, "error": str(e)}
 
 
+@api_v1.post("/pipelines/estimate-cost")
+async def estimate_pipeline_cost(body: dict, _: dict = Depends(get_current_user)):
+    """Estime le coût d'exécution d'un pipeline basé sur les modèles configurés."""
+    pipeline = body.get("pipeline", body)  # accepte { pipeline: {...} } ou directement les nodes
+    result = cost_estimator.estimate_pipeline_cost(pipeline)
+    return result
+
+
 @api_v1.post("/pipelines/assistant")
 async def pipeline_assistant(body: dict, _: dict = Depends(require_admin)):
     """Assistant LLM pour générer des pipelines .cog en langage naturel."""
@@ -2161,6 +2287,50 @@ Exemples de pipelines :
             pass
 
     return {"message": raw, "cog": cog}
+
+
+# ── Scoring qualité LLM ───────────────────────────────────────────────────────
+
+class ScoreSubmitRequest(BaseModel):
+    conversation_id: str
+    model:           str
+    stage:           str = "chairman"
+    scores:          Dict[str, Any]   # {overall: X} ou {relevance, accuracy, format, overall}
+    message_id:      Optional[str] = None
+
+@api_v1.post("/scores", status_code=201)
+async def route_submit_score(body: ScoreSubmitRequest,
+                              user: dict = Depends(get_current_user)):
+    """Enregistre un score manuel (👍 👎 ⭐)."""
+    # Normaliser : s'assurer que les valeurs sont dans [1,10]
+    raw_scores = body.scores or {}
+    scores = {k: max(1, min(10, float(v)))
+              for k, v in raw_scores.items()
+              if isinstance(v, (int, float)) and k in ("relevance","accuracy","format","overall")}
+    if not scores:
+        raise HTTPException(status_code=400, detail="scores invalides (attendu: overall 1-10)")
+    entry = scorer.save_score(
+        conversation_id=body.conversation_id,
+        model=body.model,
+        stage=body.stage,
+        user_id=user["id"],
+        source="user",
+        scores=scores,
+        message_id=body.message_id,
+    )
+    return entry
+
+@api_v1.get("/scores/summary")
+async def route_scores_summary(days: int = 30, model: Optional[str] = None,
+                                _: dict = Depends(get_current_user)):
+    """Agrégat des scores par modèle."""
+    return scorer.get_scores_summary(days=days, model=model or None)
+
+@api_v1.get("/admin/scores")
+async def route_admin_scores(days: Optional[int] = None,
+                              _: dict = Depends(require_admin)):
+    """Tous les scores bruts (admin)."""
+    return scorer.get_all_scores(days=days)
 
 
 # Enregistrer toutes les routes v1

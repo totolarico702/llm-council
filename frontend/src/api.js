@@ -106,6 +106,16 @@ export const api = {
     return res.json();
   },
 
+  // Pipelines — simulation de coûts
+  async estimatePipelineCost(pipeline) {
+    const res = await apiFetch(ROUTES.pipelines.estimateCost, {
+      method: 'POST',
+      body: JSON.stringify({ pipeline }),
+    });
+    if (!res || !res.ok) return null;
+    return res.json();
+  },
+
   // Pipelines autorisés
   async getAllowedPipelines() {
     const res = await apiFetch(ROUTES.pipelines.allowed);
@@ -157,7 +167,7 @@ export const api = {
   },
 
   // Message stream (SSE — credentials:include)
-  async sendMessageStream(conversationId, content, models, webSearchMode, onEvent, _options = {}, documentContent = null, pipelineNodes = null) {
+  async sendMessageStream(conversationId, content, models, webSearchMode, onEvent, _options = {}, documentContent = null, pipelineNodes = null, caffeineMode = false) {
     const res = await apiFetch(
       ROUTES.conversations.stream(conversationId),
       {
@@ -168,6 +178,7 @@ export const api = {
           web_search_mode:  webSearchMode || 'none',
           document_content: documentContent,
           pipeline_nodes:   pipelineNodes || null,
+          cafeine_mode:     caffeineMode || false,
         }),
       }
     );
@@ -187,6 +198,40 @@ export const api = {
         }
       }
     }
+  },
+
+  // Mode Caféine — validation humaine
+  async getPendingValidation(convId) {
+    const res = await apiFetch(ROUTES.conversations.pendingValidation(convId));
+    if (!res || !res.ok) return null;
+    return res.json();
+  },
+  async submitValidation(convId, payload) {
+    const res = await apiFetch(ROUTES.conversations.validate(convId), {
+      method: 'POST', body: JSON.stringify(payload),
+    });
+    if (!res || !res.ok) throw new Error(`HTTP ${res?.status}`);
+    return res.json();
+  },
+
+  // Scores qualité LLM
+  async submitScore(data) {
+    const res = await apiFetch(ROUTES.scores.submit, {
+      method: 'POST', body: JSON.stringify(data),
+    });
+    if (!res || !res.ok) throw new Error(`HTTP ${res?.status}`);
+    return res.json();
+  },
+  async getScoresSummary(days = 30, model = null) {
+    const params = new URLSearchParams({ days });
+    if (model) params.set('model', model);
+    const res = await apiFetch(`${ROUTES.scores.summary}?${params}`);
+    return res?.ok ? res.json() : [];
+  },
+  async getAdminScores(days = null) {
+    const params = days ? `?days=${days}` : '';
+    const res = await apiFetch(`${ROUTES.scores.adminAll}${params}`);
+    return res?.ok ? res.json() : [];
   },
 
   // Credits

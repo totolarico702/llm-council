@@ -100,7 +100,7 @@ echo ""
 echo "[3/7] Installation des dépendances Python..."
 
 uv sync
-uv add slowapi structlog > /dev/null 2>&1
+uv add slowapi structlog httpx > /dev/null 2>&1
 ok "Dépendances Python installées"
 
 echo ""
