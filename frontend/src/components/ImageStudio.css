@@ -237,7 +237,7 @@
 .is-thumb-model {
   font-size: 10px;
   color: rgba(255,255,255,.8);
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 .is-thumb-delete {
@@ -325,7 +325,7 @@
   font-size: 11px;
   color: var(--dim);
   padding: 2px 9px;
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 
 .is-lightbox-actions {

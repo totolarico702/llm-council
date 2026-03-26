@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 Image generation via OpenRouter — /api/v1/chat/completions + modalities.
 Format réponse : message.images[].imageUrl.url  (base64 data URL)

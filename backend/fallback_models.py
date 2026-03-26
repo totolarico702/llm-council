@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 Fallback model chains — production only, no :free models.
 Règle absolue : aucun modèle :free en production enterprise.

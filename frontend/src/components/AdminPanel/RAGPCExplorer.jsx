@@ -185,7 +185,7 @@ export default function RAGPCExplorer({ onDragStart }) {
             onClick={() => loadPath(parentPath)}
             title="Dossier parent"
             style={{
-              background: 'none', border: 'none', color: '#3B82F6',
+              background: 'none', border: 'none', color: '#b8941f',
               cursor: 'pointer', fontSize: 12, padding: '0 4px', flexShrink: 0,
             }}
           >←</button>

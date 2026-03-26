@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 Document extractor — router par type de fichier.
 Détection via magic bytes (header) + extension de secours.

@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """OpenRouter API client for making LLM requests."""
 
 import httpx

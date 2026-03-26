@@ -1,3 +1,5 @@
+// Copyright 2026 LLM Council Project
+// Licensed under [LICENCE À DÉFINIR]
 import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
@@ -7,6 +9,16 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { api, auth } from './api';
 import { loadModels } from './modelsStore';
 import './App.css';
+
+// Functional updater: apply fn(lastMsg) on the last message in conversation state
+function applyToTailMessage(fn) {
+  return prev => {
+    const msgs = [...prev.messages];
+    const tail = msgs[msgs.length - 1];
+    if (tail) fn(tail);
+    return { ...prev, messages: msgs };
+  };
+}
 
 function App() {
   const [user,                  setUser]                  = useState(auth.getUser());
@@ -156,171 +168,125 @@ function App() {
               break;
             // ── Events DAG (pipeline nodal) ──────────────────────────────
             case 'dag_start':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last) {
-                  // Initialiser la trace avec tous les nodes en statut "waiting"
-                  const traceNodes = (event.nodes || pipelineNodes || []).map(n => ({
-                    node_id:    n.id || n.node_id,
-                    role:       n.role || '',
-                    model:      n.model || '',
-                    used_model: n.model || '',
-                    fallback:   false,
-                    status:     'waiting',
-                  }));
-                  last.dag = {
-                    outputs: {}, final: null, execution_order: [], arrival_order: [],
-                    nodeCount: event.node_count,
-                    trace: traceNodes,
-                    total_cost: 0, total_tokens_in: 0, total_tokens_out: 0,
-                  };
-                  last.loading.dag = true;
-                }
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => {
+                const traceNodes = (event.nodes || pipelineNodes || []).map(n => ({
+                  node_id:    n.id || n.node_id,
+                  role:       n.role || '',
+                  model:      n.model || '',
+                  used_model: n.model || '',
+                  fallback:   false,
+                  status:     'waiting',
+                }));
+                tail.dag = {
+                  outputs: {}, final: null, execution_order: [], arrival_order: [],
+                  nodeCount: event.node_count,
+                  trace: traceNodes,
+                  total_cost: 0, total_tokens_in: 0, total_tokens_out: 0,
+                };
+                tail.loading.dag = true;
+              }));
               break;
             case 'node_start':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last?.dag) {
-                  const alreadyKnown = last.dag.arrival_order?.includes(event.node_id);
-                  last.dag = { ...last.dag,
-                    running: event.node_id,
-                    arrival_order: alreadyKnown
-                      ? last.dag.arrival_order
-                      : [...(last.dag.arrival_order || []), event.node_id],
-                    outputs: { ...last.dag.outputs,
-                      [event.node_id]: { status: 'running', model: event.model, role: event.role } },
-                    trace: (last.dag.trace || []).map(n =>
-                      n.node_id === event.node_id
-                        ? { ...n, status: 'running', started_at: Date.now(), model: event.model || n.model }
-                        : n
-                    ),
-                  };
-                }
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => {
+                if (!tail.dag) return;
+                const alreadyKnown = tail.dag.arrival_order?.includes(event.node_id);
+                tail.dag = { ...tail.dag,
+                  running: event.node_id,
+                  arrival_order: alreadyKnown
+                    ? tail.dag.arrival_order
+                    : [...(tail.dag.arrival_order || []), event.node_id],
+                  outputs: { ...tail.dag.outputs,
+                    [event.node_id]: { status: 'running', model: event.model, role: event.role } },
+                  trace: (tail.dag.trace || []).map(n =>
+                    n.node_id === event.node_id
+                      ? { ...n, status: 'running', started_at: Date.now(), model: event.model || n.model }
+                      : n
+                  ),
+                };
+              }));
               break;
             case 'node_done':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last?.dag) {
-                  last.dag = { ...last.dag,
-                    outputs: { ...last.dag.outputs,
-                      [event.node_id]: {
-                        status: 'done', model: event.used_model || event.model,
-                        role: event.role, output: event.output,
-                      }},
-                    trace: (last.dag.trace || []).map(n =>
-                      n.node_id === event.node_id
-                        ? {
-                            ...n,
-                            used_model: event.used_model || n.model,
-                            fallback:   event.fallback  || false,
-                            status:     'done',
-                            duration_s: event.duration_s,
-                            tokens_in:  event.tokens_in  || 0,
-                            tokens_out: event.tokens_out || 0,
-                            cost:       event.cost       || 0,
-                          }
-                        : n
-                    ),
-                    total_cost:       (last.dag.total_cost       || 0) + (event.cost       || 0),
-                    total_tokens_in:  (last.dag.total_tokens_in  || 0) + (event.tokens_in  || 0),
-                    total_tokens_out: (last.dag.total_tokens_out || 0) + (event.tokens_out || 0),
-                  };
-                }
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => {
+                if (!tail.dag) return;
+                tail.dag = { ...tail.dag,
+                  outputs: { ...tail.dag.outputs,
+                    [event.node_id]: {
+                      status: 'done', model: event.used_model || event.model,
+                      role: event.role, output: event.output,
+                    }},
+                  trace: (tail.dag.trace || []).map(n =>
+                    n.node_id === event.node_id
+                      ? {
+                          ...n,
+                          used_model: event.used_model || n.model,
+                          fallback:   event.fallback  || false,
+                          status:     'done',
+                          duration_s: event.duration_s,
+                          tokens_in:  event.tokens_in  || 0,
+                          tokens_out: event.tokens_out || 0,
+                          cost:       event.cost       || 0,
+                        }
+                      : n
+                  ),
+                  total_cost:       (tail.dag.total_cost       || 0) + (event.cost       || 0),
+                  total_tokens_in:  (tail.dag.total_tokens_in  || 0) + (event.tokens_in  || 0),
+                  total_tokens_out: (tail.dag.total_tokens_out || 0) + (event.tokens_out || 0),
+                };
+              }));
               break;
             case 'node_error':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last?.dag) {
-                  last.dag = { ...last.dag,
-                    outputs: { ...last.dag.outputs,
-                      [event.node_id]: { status: 'error', error: event.error } },
-                    trace: (last.dag.trace || []).map(n =>
-                      n.node_id === event.node_id
-                        ? { ...n, status: 'error', duration_s: event.duration_s }
-                        : n
-                    ),
-                  };
-                }
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => {
+                if (!tail.dag) return;
+                tail.dag = { ...tail.dag,
+                  outputs: { ...tail.dag.outputs,
+                    [event.node_id]: { status: 'error', error: event.error } },
+                  trace: (tail.dag.trace || []).map(n =>
+                    n.node_id === event.node_id
+                      ? { ...n, status: 'error', duration_s: event.duration_s }
+                      : n
+                  ),
+                };
+              }));
               break;
             case 'dag_complete':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last?.dag) {
-                  last.dag = { ...last.dag,
-                    final: event.final,
-                    outputs: Object.fromEntries(
-                      Object.entries(last.dag.outputs).map(([k, v]) => [k, { ...v,
-                        output: event.outputs?.[k] || v.output }])
-                    ),
-                    execution_order: event.execution_order,
-                    terminal_node: event.terminal_node,
-                    loading: false,
-                  };
-                  last.loading.dag = false;
-                }
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => {
+                if (!tail.dag) return;
+                tail.dag = { ...tail.dag,
+                  final: event.final,
+                  outputs: Object.fromEntries(
+                    Object.entries(tail.dag.outputs).map(([k, v]) => [k, { ...v,
+                      output: event.outputs?.[k] || v.output }])
+                  ),
+                  execution_order: event.execution_order,
+                  terminal_node: event.terminal_node,
+                  loading: false,
+                };
+                tail.loading.dag = false;
+              }));
               break;
             case 'stage1_start':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last) last.loading.stage1 = true;
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => { tail.loading.stage1 = true; }));
               break;
             case 'stage1_complete':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last) { last.stage1 = event.data; last.loading.stage1 = false; }
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => {
+                tail.stage1 = event.data; tail.loading.stage1 = false;
+              }));
               break;
             case 'stage2_start':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last) last.loading.stage2 = true;
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => { tail.loading.stage2 = true; }));
               break;
             case 'stage2_complete':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last) { last.stage2 = event.data; last.metadata = event.metadata; last.loading.stage2 = false; }
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => {
+                tail.stage2 = event.data; tail.metadata = event.metadata; tail.loading.stage2 = false;
+              }));
               break;
             case 'stage3_start':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last) last.loading.stage3 = true;
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => { tail.loading.stage3 = true; }));
               break;
             case 'stage3_complete':
-              setCurrentConversation(prev => {
-                const msgs = [...prev.messages];
-                const last = msgs[msgs.length - 1];
-                if (last) { last.stage3 = event.data; last.loading.stage3 = false; }
-                return { ...prev, messages: msgs };
-              });
+              setCurrentConversation(applyToTailMessage(tail => {
+                tail.stage3 = event.data; tail.loading.stage3 = false;
+              }));
               break;
             case 'title_complete':
               loadConversations();
@@ -368,28 +334,18 @@ function App() {
       } else {
         setCafeinePending(null);
         if (action !== 'reject') {
-          // Ajouter stage3 au dernier message assistant
           const s3 = res.stage3_result;
-          setCurrentConversation(prev => {
-            const msgs = [...prev.messages];
-            const last = msgs[msgs.length - 1];
-            if (last && last.role === 'assistant') {
-              last.stage3 = s3;
-              last.loading = { stage1: false, stage2: false, stage3: false };
-            }
-            return { ...prev, messages: msgs };
-          });
+          setCurrentConversation(applyToTailMessage(tail => {
+            if (tail.role !== 'assistant') return;
+            tail.stage3 = s3;
+            tail.loading = { stage1: false, stage2: false, stage3: false };
+          }));
         } else {
-          // Reject : ajouter message d'annulation
-          setCurrentConversation(prev => {
-            const msgs = [...prev.messages];
-            const last = msgs[msgs.length - 1];
-            if (last && last.role === 'assistant') {
-              last.stage3 = { model: 'system', response: '❌ Réponse rejetée par l\'utilisateur.' };
-              last.loading = { stage1: false, stage2: false, stage3: false };
-            }
-            return { ...prev, messages: msgs };
-          });
+          setCurrentConversation(applyToTailMessage(tail => {
+            if (tail.role !== 'assistant') return;
+            tail.stage3 = { model: 'system', response: '❌ Réponse rejetée par l\'utilisateur.' };
+            tail.loading = { stage1: false, stage2: false, stage3: false };
+          }));
         }
         loadConversations();
       }

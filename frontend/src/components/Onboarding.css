@@ -74,7 +74,7 @@
   text-align: left; line-height: 1.5; border: 1px solid var(--border);
 }
 .step-note code {
-  font-family: monospace; background: var(--bg);
+  font-family: var(--font-mono); background: var(--bg);
   padding: 1px 5px; border-radius: 4px; color: var(--accent2);
 }
 
@@ -86,7 +86,7 @@
   border-radius: 9px; cursor: pointer; transition: all .15s;
 }
 .option-card:hover { border-color: var(--accent); background: var(--surf); }
-.option-card.selected { border-color: var(--accent); background: rgba(59,130,246,.1); }
+.option-card.selected { border-color: var(--color-gold); background: var(--color-gold-subtle); }
 .option-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
 .option-desc { font-size: 12px; color: var(--mute); }
 

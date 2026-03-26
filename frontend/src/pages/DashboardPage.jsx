@@ -4,8 +4,8 @@ import { ROUTES } from '../api/routes';
 import './DashboardPage.css';
 
 const CHART_COLORS = [
-  '#3B82F6', '#22C55E', '#F59E0B', '#EF4444',
-  '#8B5CF6', '#06B6D4', '#EC4899', '#84CC16',
+  '#b8941f', '#6dbb87', '#cc9944', '#cc6666',
+  '#d4aa2a', '#7a7570', '#cc9944', '#6dbb87',
 ];
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
@@ -73,8 +73,8 @@ function LineChart({ data }) {
     <svg viewBox={`0 0 ${W} ${H}`} className="db-linechart" preserveAspectRatio="none">
       <defs>
         <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#3B82F6" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.02" />
+          <stop offset="0%"   stopColor="#b8941f" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#b8941f" stopOpacity="0.02" />
         </linearGradient>
       </defs>
 
@@ -95,11 +95,11 @@ function LineChart({ data }) {
       <path d={areaPath} fill="url(#areaGrad)" />
 
       {/* Line */}
-      <polyline points={points} fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinejoin="round" />
+      <polyline points={points} fill="none" stroke="#b8941f" strokeWidth="2" strokeLinejoin="round" />
 
       {/* Dots */}
       {data.map((d, i) => (
-        <circle key={i} cx={xOf(i)} cy={yOf(d.cost)} r="3" fill="#3B82F6" />
+        <circle key={i} cx={xOf(i)} cy={yOf(d.cost)} r="3" fill="#b8941f" />
       ))}
 
       {/* X labels */}

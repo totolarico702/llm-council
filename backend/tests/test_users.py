@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """Tests CRUD utilisateurs et permissions."""
 import pytest
 from httpx import AsyncClient

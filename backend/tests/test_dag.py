@@ -1,9 +1,15 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """Tests du moteur DAG — validation, tri topologique, timeout."""
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch
 
-from backend.dag_engine import validate_dag, topological_sort, find_terminal_node
+from backend.dag_engine import (
+    check_pipeline   as validate_dag,
+    topo_order       as topological_sort,
+    find_output_node as find_terminal_node,
+)
 
 
 # ── Tests statiques (sans I/O) ─────────────────────────────────────────────────
@@ -69,7 +75,7 @@ async def test_execute_dag_timeout():
     ]
 
     with patch("backend.dag_engine.query_model", side_effect=slow_model):
-        from backend.dag_engine import execute_dag
+        from backend.dag_engine import run_pipeline as execute_dag
         with pytest.raises(asyncio.TimeoutError):
             await asyncio.wait_for(
                 execute_dag(nodes, "test query"),
@@ -92,7 +98,7 @@ async def test_execute_dag_simple():
     with patch("backend.dag_engine.query_model", side_effect=mock_query):
         with patch("backend.dag_engine.health_check_pipeline", new_callable=AsyncMock) as hcp:
             hcp.return_value = {"ok": True, "nodes": {}}
-            from backend.dag_engine import execute_dag
+            from backend.dag_engine import run_pipeline as execute_dag
             result = await execute_dag(nodes, "What is Python?")
             assert result["final"] == "Response from m1"
             assert "A" in result["outputs"]

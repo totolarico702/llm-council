@@ -1,3 +1,5 @@
+// Copyright 2026 LLM Council Project
+// Licensed under [LICENCE À DÉFINIR]
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { apiFetch } from '../api';
 import { ROUTES } from '../api/routes.js';
@@ -110,9 +112,9 @@ function DagView({ dag }) {
   const current = activeTab || defaultTab;
 
   const ROLE_COLORS = {
-    explorer: '#3B82F6', critic: '#EF4444', optimizer: '#22C55E',
-    devil_advocate: '#A855F7', synthesizer: '#F59E0B', chairman: '#38BDF8',
-    reader: '#06B6D4', custom: '#94A3B8', tool: '#F59E0B',
+    explorer: '#d4aa2a', critic: '#cc6666', optimizer: '#6dbb87',
+    devil_advocate: '#cc9944', synthesizer: '#b8941f', chairman: '#b8941f',
+    reader: '#7a7570', custom: '#3a3835', tool: '#cc9944',
   };
 
   return (

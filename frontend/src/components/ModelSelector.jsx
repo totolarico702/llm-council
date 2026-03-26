@@ -62,11 +62,11 @@ export default function ModelSelector({ selectedModels, onModelsChange, webSearc
     if (isNew) {
       setPipelines(prev => [...prev, updated]);
       applyPipeline(updated);
+      setCreatingPipeline(false);
     } else {
       setPipelines(prev => prev.map(g => g.id === updated.id ? updated : g));
     }
-    setEditingPipeline(null);
-    setCreatingPipeline(false);
+    if (isNew) setEditingPipeline(null);
   };
 
   // Résumé du pipeline actif pour l'affichage dans le header

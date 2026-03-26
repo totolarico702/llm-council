@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 rag_folders.py — Arborescence RAG + résolution ACL héritées
 ============================================================

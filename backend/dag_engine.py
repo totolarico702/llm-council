@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 DAG Execution Engine for LLM Council.
 
@@ -28,7 +30,7 @@ MAX_LOOP_ITERATIONS = 10
 
 # ─── Résolution du modèle d'un node ──────────────────────────────────────────
 
-def resolve_model(node: dict) -> str:
+def get_model_id(node: dict) -> str:
     """
     Retourne le modèle à utiliser pour un node.
     Priorité : modèle explicite > rôle chairman > défaut global.
@@ -52,11 +54,11 @@ _KNOWN_PREFIXES = [
 ]
 
 
-def is_local_model(model: str) -> bool:
+def is_ollama_model(model: str) -> bool:
     return model.startswith("ollama/") or model.startswith("local/")
 
 
-def normalize_model_id(model: str) -> str:
+def normalize_provider_id(model: str) -> str:
     if not model:
         return model
     if any(model.startswith(p) for p in _KNOWN_PREFIXES):
@@ -125,7 +127,7 @@ LANG_INSTRUCTION: Dict[str, str] = {
 }
 
 
-def get_system_prompt(node: Dict[str, Any], language: str = "fr") -> str:
+def build_system_prompt(node: Dict[str, Any], language: str = "fr") -> str:
     custom = (node.get("role_prompt") or node.get("system_prompt") or "").strip()
     base = custom if custom else DEFAULT_ROLE_PROMPTS.get(node.get("role", ""), "")
     lang_suffix = LANG_INSTRUCTION.get(language, LANG_INSTRUCTION["fr"])
@@ -134,7 +136,7 @@ def get_system_prompt(node: Dict[str, Any], language: str = "fr") -> str:
 
 # ─── DAG validation ───────────────────────────────────────────────────────────
 
-def validate_dag(nodes: List[Dict[str, Any]]) -> List[str]:
+def check_pipeline(nodes: List[Dict[str, Any]]) -> List[str]:
     errors = []
     node_ids = {n["id"] for n in nodes}
 
@@ -174,7 +176,7 @@ def validate_dag(nodes: List[Dict[str, Any]]) -> List[str]:
     return errors
 
 
-def topological_sort(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def topo_order(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     node_map = {n["id"]: n for n in nodes}
     in_degree: Dict[str, int] = {n["id"]: 0 for n in nodes}
 
@@ -203,7 +205,7 @@ def topological_sort(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return sorted_nodes
 
 
-def find_terminal_node(nodes: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def find_output_node(nodes: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     referenced_as_input = set()
     for node in nodes:
         for inp in node.get("inputs", []):
@@ -215,7 +217,7 @@ def find_terminal_node(nodes: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
 
 # ─── Node prompt builder ──────────────────────────────────────────────────────
 
-def build_node_prompt(
+def compose_node_prompt(
     node: Dict[str, Any],
     user_query: str,
     outputs: Dict[str, str],
@@ -223,7 +225,7 @@ def build_node_prompt(
     web_search_mode: str,
     language: str = "fr",
 ) -> tuple[str, str]:
-    system_prompt = get_system_prompt(node, language=language)
+    system_prompt = build_system_prompt(node, language=language)
     parts = []
 
     if document_content:
@@ -268,7 +270,7 @@ def build_node_prompt(
 
 # ─── RAG enrichissement du prompt ────────────────────────────────────────────
 
-async def build_prompt_with_rag(node: dict, user_prompt: str, service_id: str = "global") -> str:
+async def compose_prompt_with_rag(node: dict, user_prompt: str, service_id: str = "global") -> str:
     if not node.get("use_rag", False):
         return user_prompt
 
@@ -418,7 +420,7 @@ async def _run_node(
                       else f"● {node_type}:{node.get('role','?')}")
     inputs_preview = [inp for inp in node.get("inputs", []) if inp != "user_prompt"]
     _raw_model     = node.get("model", "—")
-    _local_tag     = " [LOCAL]" if is_local_model(_raw_model) else ""
+    _local_tag     = " [LOCAL]" if is_ollama_model(_raw_model) else ""
     print(f"[DAG] ┌ {node_id} ({ntype_label}) model={_raw_model.split('/')[-1]}{_local_tag}")
     for inp in inputs_preview:
         prev = (outputs.get(inp, "")[:60].replace(chr(10), " ") + "…") if inp in outputs else "pending"
@@ -471,7 +473,7 @@ async def _run_node(
             return node_id, err, str(e)
 
     # ── LLM node ──────────────────────────────────────────────────────────────
-    model          = normalize_model_id(resolve_model(node))
+    model          = normalize_provider_id(get_model_id(node))
     original_model = model
     role           = node.get("role", "explorer")
 
@@ -479,10 +481,10 @@ async def _run_node(
         await on_node_start(node_id, model, role)
 
     try:
-        effective_query = await build_prompt_with_rag(
+        effective_query = await compose_prompt_with_rag(
             node, user_query, service_id=service_id or "global"
         )
-        system_prompt, user_content = build_node_prompt(
+        system_prompt, user_content = compose_node_prompt(
             node, effective_query, outputs, document_content,
             web_search_mode, language=user_language,
         )
@@ -507,7 +509,7 @@ async def _run_node(
         response   = None
         used_model = model
 
-        if is_local_model(model):
+        if is_ollama_model(model):
             try:
                 response   = await query_model(model, messages)
                 used_model = model
@@ -588,7 +590,7 @@ async def _run_node(
 
 # ─── Main DAG executor ────────────────────────────────────────────────────────
 
-async def execute_dag(
+async def run_pipeline(
     nodes: List[Dict[str, Any]],
     user_query: str,
     history: List[Dict[str, Any]] = None,
@@ -621,7 +623,7 @@ async def execute_dag(
     - LLM nodes with cloud fallback chains and local Ollama support
     """
     # ── Validate ──────────────────────────────────────────────────────────────
-    errors_found = validate_dag(nodes)
+    errors_found = check_pipeline(nodes)
     if errors_found:
         return {
             "outputs":         {},
@@ -631,7 +633,7 @@ async def execute_dag(
             "execution_order": [],
         }
 
-    terminal_node = find_terminal_node(nodes)
+    terminal_node = find_output_node(nodes)
     term_id       = terminal_node["id"] if terminal_node else "?"
 
     # ── Health check pré-exécution ────────────────────────────────────────────
@@ -741,7 +743,7 @@ async def execute_dag(
 
 # ─── Single model bypass ─────────────────────────────────────────────────────
 
-async def execute_single_model(
+async def run_single_model(
     model: str,
     user_query: str,
     history: List[Dict[str, Any]] = None,

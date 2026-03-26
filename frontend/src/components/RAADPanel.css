@@ -179,7 +179,7 @@
   user-select: none;
 }
 .raad-folder-item:hover  { background: rgba(255,255,255,.04); }
-.raad-folder-item.active { background: rgba(59,130,246,.12); color: var(--accent, var(--color-primary)); }
+.raad-folder-item.active { background: var(--color-gold-subtle); color: var(--color-gold-light); }
 
 .raad-folder-chevron {
   color: var(--mute, #484F58);
@@ -236,7 +236,7 @@
   transition: background .1s;
   position: relative;
 }
-.raad-doc-item:hover { background: rgba(59,130,246,.1); }
+.raad-doc-item:hover { background: var(--color-gold-subtle); }
 
 .raad-doc-icon { font-size: 14px; flex-shrink: 0; }
 .raad-doc-info { flex: 1; overflow: hidden; }
@@ -274,7 +274,7 @@
   cursor: pointer;
   transition: background .1s;
 }
-.raad-search-result:hover { background: rgba(59,130,246,.1); }
+.raad-search-result:hover { background: var(--color-gold-subtle); }
 .raad-search-result-file {
   font-size: 11px;
   font-weight: 600;

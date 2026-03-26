@@ -147,8 +147,8 @@ export function makeNodeRenderer({ onDeleteFolder, onDeleteDoc, onReindex, onOpe
         <div
           style={{
             ...style,
-            background:    isDragOver ? 'rgba(99, 102, 241, 0.2)' : undefined,
-            outline:       isDragOver ? '1px dashed #6366f1' : undefined,
+            background:    isDragOver ? 'rgba(184, 148, 31, 0.1)' : undefined,
+            outline:       isDragOver ? '1px dashed #b8941f' : undefined,
             borderRadius:  isDragOver ? '4px' : undefined,
             transition:    'background 0.15s, outline 0.15s',
           }}

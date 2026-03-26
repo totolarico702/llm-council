@@ -1,275 +1,372 @@
-"""3-stage LLM Council orchestration."""
+# Copyright 2026 LLM Council Project
+# LLM Council — Multi-LLM Deliberation System
+# Licensed under [LICENCE À DÉFINIR]
 
-from typing import List, Dict, Any, Tuple, Optional
-from .openrouter import query_models_parallel, query_model
+"""
+LLM Council deliberation engine.
+
+Orchestrates a 3-stage deliberation process:
+  Stage 1 — Parallel opinion gathering from all council members
+  Stage 2 — Anonymous peer review to prevent favoritism
+  Stage 3 — Chairman synthesis of all opinions and evaluations
+"""
+
+import asyncio
+import re
+from collections import defaultdict
+from typing import Any, Optional
+
+from .openrouter import query_model, query_models_parallel
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
-# Modes de recherche web
-WEB_SEARCH_NONE = "none"
-WEB_SEARCH_FACTCHECK = "factcheck"   # Chairman uniquement
-WEB_SEARCH_DEEP = "deep"             # Tous les agents + Chairman
+
+# ── Web search modes ──────────────────────────────────────────────────────────
+
+WEB_NONE      = "none"
+WEB_FACTCHECK = "factcheck"   # Chairman only
+WEB_DEEP      = "deep"        # All agents + Chairman
 
 
-async def stage1_collect_responses(
-    user_query: str,
-    council_models: List[str] = None,
-    web_search_mode: str = WEB_SEARCH_NONE,
-    history: List[Dict[str, Any]] = None,
-) -> List[Dict[str, Any]]:
-    """Stage 1: Collect individual responses from all council models."""
-    models = council_models if council_models else COUNCIL_MODELS
-    use_web = web_search_mode == WEB_SEARCH_DEEP
+# ── Internal helpers ──────────────────────────────────────────────────────────
 
-    messages = list(history) if history else []
-    messages.append({"role": "user", "content": user_query})
-    responses = await query_models_parallel(models, messages, web_search=use_web)
+def _alpha_codes(n: int) -> list[str]:
+    """Return n alphabetical labels: A, B, C, …"""
+    return [chr(65 + i) for i in range(n)]
 
-    stage1_results = []
-    for model, response in responses.items():
-        if response is not None:
-            stage1_results.append({
-                "model": model,
-                "response": response.get('content', '')
+
+def extract_ranking(raw_text: str) -> list[str]:
+    """
+    Parse the FINAL RANKING section from a peer-review response.
+
+    Accepts two formats:
+      numbered  — "1. Response B"
+      plain     — "Response B"
+
+    Returns an ordered list of label strings, e.g. ["Response B", "Response A"].
+    Falls back to scanning the whole text if the header is absent.
+    """
+    if "FINAL RANKING:" in raw_text:
+        section = raw_text.split("FINAL RANKING:", 1)[1]
+        numbered = re.findall(r'\d+\.\s*Response [A-Z]', section)
+        if numbered:
+            return [re.search(r'Response [A-Z]', m).group() for m in numbered]
+        return re.findall(r'Response [A-Z]', section)
+    return re.findall(r'Response [A-Z]', raw_text)
+
+
+def rank_aggregator(
+    reviews: list[dict[str, Any]],
+    code_map: dict[str, str],
+) -> list[dict[str, Any]]:
+    """
+    Compute average ranking positions across all peer evaluations.
+
+    Returns a list sorted from best (lowest avg position) to worst.
+    Each entry: { "model": str, "average_rank": float, "rankings_count": int }
+    """
+    positions: dict[str, list[int]] = defaultdict(list)
+
+    for review in reviews:
+        parsed = extract_ranking(review["evaluation"])
+        for pos, code in enumerate(parsed, start=1):
+            if code in code_map:
+                positions[code_map[code]].append(pos)
+
+    leaderboard = []
+    for model, pos_list in positions.items():
+        if pos_list:
+            leaderboard.append({
+                "model":          model,
+                "average_rank":   round(sum(pos_list) / len(pos_list), 2),
+                "rankings_count": len(pos_list),
             })
 
-    return stage1_results
+    leaderboard.sort(key=lambda x: x["average_rank"])
+    return leaderboard
 
 
-async def stage2_collect_rankings(
-    user_query: str,
-    stage1_results: List[Dict[str, Any]],
-    council_models: List[str] = None,
-    history: List[Dict[str, Any]] = None,
-) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
+# ── DeliberationSession ───────────────────────────────────────────────────────
+
+class DeliberationSession:
     """
-    Stage 2: Each model ranks the anonymized responses.
-    M4 : history injecté pour le contexte conversationnel.
-    M6 : chaque modèle reçoit les réponses avec sa propre réponse exclue
-         (ou marquée) pour éviter le biais d'auto-évaluation.
+    Manages a 3-stage multi-LLM deliberation for a single user query.
+
+    Usage:
+        session = DeliberationSession(query, models, history, web_mode)
+        opinions = await session.gather_opinions()
+        reviews, code_map = await session.peer_review(opinions)
+        conclusion = await session.synthesize(opinions, reviews)
     """
-    models = council_models if council_models else COUNCIL_MODELS
 
-    # Assigner des labels alphabétiques aux réponses (anonymisation)
-    labels = [chr(65 + i) for i in range(len(stage1_results))]
-    label_to_model = {
-        f"Response {label}": result['model']
-        for label, result in zip(labels, stage1_results)
-    }
-    # Index inverse : model → label (pour exclure l'auto-évaluation)
-    model_to_label = {result['model']: f"Response {label}"
-                      for label, result in zip(labels, stage1_results)}
+    def __init__(
+        self,
+        query: str,
+        models: list[str],
+        history: list[dict[str, Any]],
+        web_mode: str = WEB_NONE,
+        chairman: Optional[str] = None,
+    ) -> None:
+        self.query    = query
+        self.models   = models
+        self.history  = history
+        self.web_mode = web_mode
+        self.chairman = chairman or CHAIRMAN_MODEL
 
-    def build_ranking_prompt(evaluator_model: str) -> str:
+    # ── Stage 1 ───────────────────────────────────────────────────────────────
+
+    async def gather_opinions(self) -> list[dict[str, Any]]:
         """
-        M6 : construit un prompt de ranking en excluant la propre réponse
-        du modèle évaluateur pour éviter le biais d'auto-évaluation.
+        Stage 1: Query all council members in parallel.
+
+        Each member receives the same conversation history + the user query.
+        Responses that fail (None) are silently dropped — the deliberation
+        continues with whatever succeeds (graceful degradation).
+
+        Returns a list of { "model": str, "response": str } dicts.
         """
-        own_label = model_to_label.get(evaluator_model)
-        # Construire la liste des réponses en excluant la sienne
-        responses_to_rank = [
-            (label, result)
-            for label, result in zip(labels, stage1_results)
-            if f"Response {label}" != own_label
+        use_web = (self.web_mode == WEB_DEEP)
+        thread  = list(self.history) + [{"role": "user", "content": self.query}]
+
+        raw_responses = await query_models_parallel(
+            self.models, thread, web_search=use_web
+        )
+
+        return [
+            {"model": m, "response": r.get("content", "")}
+            for m, r in raw_responses.items()
+            if r is not None
         ]
-        n_responses = len(responses_to_rank)
 
-        responses_text = "\n\n".join([
-            f"Response {label}:\n{result['response']}"
-            for label, result in responses_to_rank
-        ])
+    # ── Stage 2 ───────────────────────────────────────────────────────────────
 
-        exclusion_note = (
-            f"\nNote: You have been excluded from evaluating your own response "
-            f"({own_label}) to avoid bias. Please rank only the {n_responses} "
-            f"responses shown below.\n"
-        ) if own_label else ""
+    async def peer_review(
+        self,
+        opinions: list[dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], dict[str, str]]:
+        """
+        Stage 2: Each council member evaluates the anonymised opinions.
 
-        return f"""You are evaluating different responses to the following question:
+        Responses are labelled A, B, C … so evaluators cannot identify
+        their own answer or favour a known model (anti-sycophancy).
+        Each model is excluded from evaluating its own response.
 
-Question: {user_query}
-{exclusion_note}
-Here are the responses from different models (anonymized):
-
-{responses_text}
-
-Your task:
-1. First, evaluate each response individually. For each response, explain what it does well and what it does poorly.
-2. Then, at the very end of your response, provide a final ranking.
-
-IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
-- Start with the line "FINAL RANKING:" (all caps, with colon)
-- Then list the responses from best to worst as a numbered list
-- Each line should be: number, period, space, then ONLY the response label (e.g., "1. Response A")
-- Do not add any other text or explanations in the ranking section
-
-Example of the correct format for your ENTIRE response:
-
-Response A provides good detail on X but misses Y...
-Response B is accurate but lacks depth on Z...
-
-FINAL RANKING:
-1. Response B
-2. Response A
-
-Now provide your evaluation and ranking:"""
-
-    # M4 : construire les messages avec history pour chaque modèle
-    async def rank_one(model: str) -> Optional[Dict[str, Any]]:
-        prompt = build_ranking_prompt(model)
-        messages = list(history) if history else []
-        messages.append({"role": "user", "content": prompt})
-        from .openrouter import query_model as _qm
-        response = await _qm(model, messages, web_search=False)
-        if response is None:
-            return None
-        full_text      = response.get('content', '')
-        parsed_ranking = parse_ranking_from_text(full_text)
-        if not parsed_ranking:
-            print(f"[council] WARNING: parse_ranking_empty model={model} raw={full_text[:200]!r}")
-        return {
-            "model":           model,
-            "ranking":         full_text,
-            "parsed_ranking":  parsed_ranking,
-            "parse_failed":    not parsed_ranking,
+        Returns:
+          - list of evaluation dicts (one per model)
+          - code_map: { "Response A": "provider/model-name", … }
+        """
+        codes    = _alpha_codes(len(opinions))
+        code_map = {
+            f"Response {c}": op["model"]
+            for c, op in zip(codes, opinions)
         }
+        author_code = {op["model"]: f"Response {c}" for c, op in zip(codes, opinions)}
 
-    # Exécuter tous les rankings en parallèle
-    import asyncio as _asyncio
-    tasks   = [rank_one(m) for m in models]
-    results = await _asyncio.gather(*tasks)
+        def _build_prompt(evaluator: str) -> str:
+            own = author_code.get(evaluator)
+            candidates = [
+                (c, op)
+                for c, op in zip(codes, opinions)
+                if f"Response {c}" != own
+            ]
+            body = "\n\n".join(
+                f"Response {c}:\n{op['response']}"
+                for c, op in candidates
+            )
+            exclusion = (
+                f"\nNote: Your own response ({own}) is excluded from this "
+                f"evaluation to avoid self-evaluation bias. "
+                f"Please rank only the {len(candidates)} responses below.\n"
+            ) if own else ""
 
-    stage2_results = [r for r in results if r is not None]
-    return stage2_results, label_to_model
+            return (
+                f"You are evaluating different responses to the following question:\n\n"
+                f"Question: {self.query}\n"
+                f"{exclusion}\n"
+                f"Here are the responses from different models (anonymised):\n\n"
+                f"{body}\n\n"
+                f"Your task:\n"
+                f"1. Evaluate each response individually. Explain strengths and weaknesses.\n"
+                f"2. At the very end, provide a final ranking.\n\n"
+                f"IMPORTANT — Your final ranking MUST follow this exact format:\n"
+                f'- Start with the line "FINAL RANKING:" (all caps, with colon)\n'
+                f"- List responses from best to worst as a numbered list\n"
+                f'- Each line: number, period, space, label only — e.g. "1. Response A"\n'
+                f"- No extra text after the ranking section\n\n"
+                f"Now provide your evaluation and ranking:"
+            )
+
+        async def _evaluate_one(model: str) -> Optional[dict[str, Any]]:
+            prompt   = _build_prompt(model)
+            messages = list(self.history) + [{"role": "user", "content": prompt}]
+            result   = await query_model(model, messages, web_search=False)
+            if result is None:
+                return None
+            text   = result.get("content", "")
+            parsed = extract_ranking(text)
+            if not parsed:
+                print(f"[council] WARNING: empty ranking — model={model} raw={text[:200]!r}")
+            return {
+                "model":        model,
+                "evaluation":   text,
+                # Backwards-compat key used by legacy callers (main.py / storage)
+                "ranking":      text,
+                "parsed_ranking": parsed,
+                "parse_failed": not parsed,
+            }
+
+        tasks   = [_evaluate_one(m) for m in self.models]
+        results = await asyncio.gather(*tasks)
+        reviews = [r for r in results if r is not None]
+        return reviews, code_map
+
+    # ── Stage 3 ───────────────────────────────────────────────────────────────
+
+    async def synthesize(
+        self,
+        opinions: list[dict[str, Any]],
+        reviews:  list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """
+        Stage 3: Chairman synthesises a final answer from all evidence.
+
+        The chairman receives:
+          - the original question
+          - all individual opinions (with model names visible)
+          - all peer evaluations
+
+        Optional web search is enabled when web_mode is factcheck or deep.
+
+        Returns { "model": str, "response": str }.
+        """
+        use_web = (self.web_mode in (WEB_FACTCHECK, WEB_DEEP))
+
+        opinions_block = "\n\n".join(
+            f"Model: {op['model']}\nOpinion: {op['response']}"
+            for op in opinions
+        )
+        reviews_block = "\n\n".join(
+            f"Model: {rev['model']}\nEvaluation: {rev['evaluation']}"
+            for rev in reviews
+        )
+        web_note = (
+            "\nYou have access to web search. Use it to verify disputed facts "
+            "and enrich your synthesis with current information.\n"
+        ) if use_web else ""
+
+        prompt = (
+            f"You are the Chairman of an LLM Council. "
+            f"Multiple AI models have independently answered a user's question, "
+            f"then reviewed each other's answers anonymously.\n"
+            f"{web_note}\n"
+            f"Original Question: {self.query}\n\n"
+            f"STAGE 1 — Individual Opinions:\n{opinions_block}\n\n"
+            f"STAGE 2 — Peer Evaluations:\n{reviews_block}\n\n"
+            f"Synthesise all of the above into one comprehensive, accurate answer. "
+            f"Consider: the range of opinions, the peer evaluations, patterns of "
+            f"agreement or disagreement"
+            f"{', and verify disputed facts via web search' if use_web else ''}.\n\n"
+            f"Provide a clear, well-reasoned final answer:"
+        )
+
+        messages = list(self.history) + [{"role": "user", "content": prompt}]
+        result   = await query_model(self.chairman, messages, web_search=use_web)
+
+        if result is None:
+            return {"model": self.chairman, "response": "Error: Chairman synthesis failed."}
+
+        return {"model": self.chairman, "response": result.get("content", "")}
 
 
-async def stage3_synthesize_final(
-    user_query: str,
-    stage1_results: List[Dict[str, Any]],
-    stage2_results: List[Dict[str, Any]],
-    chairman_model: str = None,
-    web_search_mode: str = WEB_SEARCH_NONE,
-    history: List[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
-    """Stage 3: Chairman synthesizes final response, avec web search optionnel."""
-    chairman = chairman_model if chairman_model else CHAIRMAN_MODEL
-    use_web = web_search_mode in (WEB_SEARCH_FACTCHECK, WEB_SEARCH_DEEP)
+# ── Module-level entry points (used by main.py and tests) ─────────────────────
 
-    stage1_text = "\n\n".join([
-        f"Model: {result['model']}\nResponse: {result['response']}"
-        for result in stage1_results
-    ])
-
-    stage2_text = "\n\n".join([
-        f"Model: {result['model']}\nRanking: {result['ranking']}"
-        for result in stage2_results
-    ])
-
-    web_instruction = ""
-    if use_web:
-        web_instruction = "\nYou have access to web search. Use it to verify key facts, check sources, and enrich your synthesis with current information before writing your final answer.\n"
-
-    chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
-{web_instruction}
-Original Question: {user_query}
-
-STAGE 1 - Individual Responses:
-{stage1_text}
-
-STAGE 2 - Peer Rankings:
-{stage2_text}
-
-Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question. Consider:
-- The individual responses and their insights
-- The peer rankings and what they reveal about response quality
-- Any patterns of agreement or disagreement
-{"- Use web search to verify disputed facts or add current information" if use_web else ""}
-
-Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
-
-    messages = list(history) if history else []
-    messages.append({"role": "user", "content": chairman_prompt})
-    response = await query_model(chairman, messages, web_search=use_web)
-
-    if response is None:
-        return {
-            "model": chairman,
-            "response": "Error: Unable to generate final synthesis."
-        }
-
-    return {
-        "model": chairman,
-        "response": response.get('content', '')
-    }
+async def gather_opinions(
+    query:    str,
+    models:   list[str]              = None,
+    web_mode: str                     = WEB_NONE,
+    history:  list[dict[str, Any]]   = None,
+) -> list[dict[str, Any]]:
+    """Stage 1 entry point — see DeliberationSession.gather_opinions."""
+    session = DeliberationSession(
+        query    = query,
+        models   = models or COUNCIL_MODELS,
+        history  = history or [],
+        web_mode = web_mode,
+    )
+    return await session.gather_opinions()
 
 
-def parse_ranking_from_text(ranking_text: str) -> List[str]:
-    import re
-    if "FINAL RANKING:" in ranking_text:
-        parts = ranking_text.split("FINAL RANKING:")
-        if len(parts) >= 2:
-            ranking_section = parts[1]
-            numbered_matches = re.findall(r'\d+\.\s*Response [A-Z]', ranking_section)
-            if numbered_matches:
-                return [re.search(r'Response [A-Z]', m).group() for m in numbered_matches]
-            matches = re.findall(r'Response [A-Z]', ranking_section)
-            return matches
-    return re.findall(r'Response [A-Z]', ranking_text)
+async def peer_review(
+    query:    str,
+    opinions: list[dict[str, Any]],
+    models:   list[str]              = None,
+    history:  list[dict[str, Any]]   = None,
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """Stage 2 entry point — see DeliberationSession.peer_review."""
+    session = DeliberationSession(
+        query   = query,
+        models  = models or COUNCIL_MODELS,
+        history = history or [],
+    )
+    return await session.peer_review(opinions)
 
 
-def calculate_aggregate_rankings(
-    stage2_results: List[Dict[str, Any]],
-    label_to_model: Dict[str, str]
-) -> List[Dict[str, Any]]:
-    from collections import defaultdict
-    model_positions = defaultdict(list)
-
-    for ranking in stage2_results:
-        parsed_ranking = parse_ranking_from_text(ranking['ranking'])
-        for position, label in enumerate(parsed_ranking, start=1):
-            if label in label_to_model:
-                model_positions[label_to_model[label]].append(position)
-
-    aggregate = []
-    for model, positions in model_positions.items():
-        if positions:
-            aggregate.append({
-                "model": model,
-                "average_rank": round(sum(positions) / len(positions), 2),
-                "rankings_count": len(positions)
-            })
-
-    aggregate.sort(key=lambda x: x['average_rank'])
-    return aggregate
+async def synthesize_final(
+    query:    str,
+    opinions: list[dict[str, Any]],
+    reviews:  list[dict[str, Any]],
+    chairman: str                    = None,
+    web_mode: str                    = WEB_NONE,
+    history:  list[dict[str, Any]]   = None,
+) -> dict[str, Any]:
+    """Stage 3 entry point — see DeliberationSession.synthesize."""
+    session = DeliberationSession(
+        query    = query,
+        models   = COUNCIL_MODELS,
+        history  = history or [],
+        web_mode = web_mode,
+        chairman = chairman,
+    )
+    return await session.synthesize(opinions, reviews)
 
 
-async def generate_conversation_title(user_query: str) -> str:
-    title_prompt = f"""Generate a very short title (3-5 words maximum) that summarizes the following question.
-The title should be concise and descriptive. Do not use quotes or punctuation in the title.
-
-Question: {user_query}
-
-Title:"""
-
-    messages = [{"role": "user", "content": title_prompt}]
-    response = await query_model("google/gemini-2.5-flash", messages, timeout=30.0)
-
-    if response is None:
+async def generate_title(query: str) -> str:
+    """
+    Generate a short conversation title (3-5 words) from the user query.
+    Falls back to "New Conversation" on failure.
+    """
+    prompt = (
+        "Generate a very short title (3-5 words maximum) summarising this question. "
+        "Be concise and descriptive. No quotes, no punctuation.\n\n"
+        f"Question: {query}\n\nTitle:"
+    )
+    result = await query_model(
+        "google/gemini-2.5-flash",
+        [{"role": "user", "content": prompt}],
+        timeout=30.0,
+    )
+    if result is None:
         return "New Conversation"
-
-    title = response.get('content', 'New Conversation').strip().strip('"\'')
+    title = result.get("content", "New Conversation").strip().strip("\"'")
     return title[:47] + "..." if len(title) > 50 else title
 
 
-async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
-    stage1_results = await stage1_collect_responses(user_query)
-    if not stage1_results:
+async def run_deliberation(
+    query: str,
+) -> tuple[list, list, dict, dict]:
+    """
+    Run a full 3-stage deliberation and return all outputs.
+
+    Returns: (opinions, reviews, conclusion, metadata)
+    """
+    opinions = await gather_opinions(query)
+    if not opinions:
         return [], [], {"model": "error", "response": "All models failed to respond."}, {}
 
-    stage2_results, label_to_model = await stage2_collect_rankings(user_query, stage1_results)
-    aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
-    stage3_result = await stage3_synthesize_final(user_query, stage1_results, stage2_results)
+    reviews, code_map = await peer_review(query, opinions)
+    leaderboard       = rank_aggregator(reviews, code_map)
+    conclusion        = await synthesize_final(query, opinions, reviews)
 
-    return stage1_results, stage2_results, stage3_result, {
-        "label_to_model": label_to_model,
-        "aggregate_rankings": aggregate_rankings
+    return opinions, reviews, conclusion, {
+        "label_to_model":     code_map,
+        "aggregate_rankings": leaderboard,
     }

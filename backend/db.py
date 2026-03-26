@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 db.py — LLM Council · Couche de persistance TinyDB
 ====================================================

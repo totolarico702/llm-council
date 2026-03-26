@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """FastAPI backend — LLM Council (db.py edition)."""
 import sys
 if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
@@ -25,9 +27,12 @@ RAG_UPLOAD_MAX_BYTES = int(os.getenv("RAG_UPLOAD_MAX_MB", "100")) * 1024 * 1024
 from . import storage
 from .storage import get_conversation_history, init_data_dirs
 from .council import (
-    run_full_council, generate_conversation_title,
-    stage1_collect_responses, stage2_collect_rankings,
-    stage3_synthesize_final, calculate_aggregate_rankings,
+    run_deliberation          as run_full_council,
+    generate_title            as generate_conversation_title,
+    gather_opinions           as stage1_collect_responses,
+    peer_review               as stage2_collect_rankings,
+    synthesize_final          as stage3_synthesize_final,
+    rank_aggregator           as calculate_aggregate_rankings,
 )
 from . import db
 from .db import (
@@ -46,7 +51,7 @@ from . import user_archiver
 from . import rag_store
 from . import rag_folders as rag_fld
 from . import rag_audit
-from .dag_engine import execute_dag
+from .dag_engine import run_pipeline as execute_dag
 from .fallback_models import PRODUCTION_MODELS, is_production_safe
 from .config import DEFAULT_MODEL, DEFAULT_CHAIRMAN, MISTRAL_MODELS, DATA_DIR
 from .fs_browser import router as fs_router
@@ -1775,6 +1780,8 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
                 # Récupérer le résultat final
                 result = await dag_task
+                if result is None:
+                    result = {"final": "", "terminal_node": {}, "outputs": {}, "execution_order": []}
 
                 # Log usage pour chaque node LLM
                 for node in nodes:

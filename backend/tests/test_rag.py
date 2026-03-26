@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """Tests RAG — score threshold, chunking, extraction."""
 import pytest
 from pathlib import Path

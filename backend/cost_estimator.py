@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 cost_estimator.py — Simulation de coûts par pipeline
 Estime le coût d'exécution d'un pipeline basé sur les modèles configurés.

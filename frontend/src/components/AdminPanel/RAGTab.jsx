@@ -394,7 +394,7 @@ export default function RAGTab() {
             }}>
               📁 Mémoire RAG
               {uploadFolder && (
-                <span style={{ fontWeight: 400, marginLeft: 8, color: '#3B82F6' }}>
+                <span style={{ fontWeight: 400, marginLeft: 8, color: '#b8941f' }}>
                   ← {uploadFolder.name}
                 </span>
               )}

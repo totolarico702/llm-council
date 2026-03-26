@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 ollama_client.py — Client Ollama pour LLM Council
 API REST Ollama : http://localhost:11434 (compatible OpenAI)

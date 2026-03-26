@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { apiFetch } from '../api';
+import { ROUTES } from '../api/routes';
 
 export function useRAD() {
   const [folders,       setFolders]       = useState([]);
@@ -20,7 +21,7 @@ export function useRAD() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch('/rag/folders');
+      const data = await apiFetch(ROUTES.rag.folders);
       setFolders(Array.isArray(data) ? data : []);
     } catch (e) {
       setError(e.message);

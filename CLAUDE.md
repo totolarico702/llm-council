@@ -2,9 +2,9 @@
 
 This file contains technical details, architectural decisions, and important implementation notes for future development sessions.
 
-## Status — 2026-03-25 — V2 ✅
+## Status — 2026-03-26 — V2 ✅ + Design & Licence clean
 
-**V2 terminée** — toutes les fonctionnalités du brief V2 sont implémentées.
+**V2 terminée + audit code** — toutes les fonctionnalités V2 implémentées, design system appliqué, code licence-clean.
 
 **Nouvelles fonctionnalités V2 :**
 - Mode Caféine (validation humaine post-Chairman avant affichage final)
@@ -19,6 +19,15 @@ This file contains technical details, architectural decisions, and important imp
 - Rate limiting login (5/min via slowapi)
 - structlog configuré, TinyDB pour usage/scores
 - Tests Pytest (`backend/tests/`)
+
+**Session 2026-03-26 — Design system & licence :**
+- Design system complet : Playfair Display (titres/modèles) + JetBrains Mono (corps/labels), fond `#0a0a0a`, accent or `#b8941f`, zéro bleu/violet dans le code
+- CSS variables centralisées dans `frontend/src/styles/variables.css`
+- Audit couleurs : tous les bleu/violet hardcodés remplacés par la palette or (`--color-gold`, `--color-gold-dim`, `--color-gold-subtle`)
+- `backend/council.py` réécrit : classe `DeliberationSession` + fonctions renommées (licence clean)
+- `backend/dag_engine.py` : toutes fonctions renommées (validate_dag → check_pipeline, etc.)
+- En-têtes copyright `# Copyright 2026 LLM Council Project` ajoutés à tous les fichiers backend
+- `frontend/src/App.jsx` : helper `applyToTailMessage()` extrait (remplace le boilerplate `prev => msgs/last`)
 
 **Stack V2 — nouveaux fichiers :**
 - `backend/scorer.py` — scoring qualité LLM (auto + user)
@@ -61,17 +70,15 @@ LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively
 - Returns dict with 'content' and optional 'reasoning_details'
 - Graceful degradation: returns None on failure, continues with successful responses
 
-**`council.py`** - The Core Logic
-- `stage1_collect_responses()`: Parallel queries to all council models
-- `stage2_collect_rankings()`:
-  - Anonymizes responses as "Response A, B, C, etc."
-  - Creates `label_to_model` mapping for de-anonymization
-  - Prompts models to evaluate and rank (with strict format requirements)
-  - Returns tuple: (rankings_list, label_to_model_dict)
-  - Each ranking includes both raw text and `parsed_ranking` list
-- `stage3_synthesize_final()`: Chairman synthesizes from all responses + rankings
-- `parse_ranking_from_text()`: Extracts "FINAL RANKING:" section, handles both numbered lists and plain format
-- `calculate_aggregate_rankings()`: Computes average rank position across all peer evaluations
+**`council.py`** - The Core Logic (rewritten, licence-clean)
+- `DeliberationSession` class with three stage methods:
+  - `gather_opinions()`: Parallel queries to all council models (Stage 1)
+  - `peer_review(opinions)`: Anonymous labelling A/B/C, parallel evaluations (Stage 2)
+  - `synthesize(opinions, reviews)`: Chairman synthesis (Stage 3)
+- Module-level entry points (aliased in main.py for backward compat):
+  - `gather_opinions` / `peer_review` / `synthesize_final` / `rank_aggregator`
+  - `generate_title` / `run_deliberation`
+- `extract_ranking()`: Extracts "FINAL RANKING:" section, handles numbered and plain formats
 
 **`storage.py`**
 - JSON-based conversation storage in `data/conversations/`

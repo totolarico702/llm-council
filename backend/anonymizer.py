@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 anonymizer.py — Proxy d'anonymisation réversible par tokenisation.
 

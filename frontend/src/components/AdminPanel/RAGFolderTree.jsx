@@ -5,6 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { apiFetch } from '../../api';
+import { ROUTES } from '../../api/routes';
 
 function buildBreadcrumb(folders, selectedId) {
   if (!selectedId) return [];
@@ -48,7 +49,7 @@ function FolderNode({ node, depth, selected, onSelect, onRefresh, docCounts }) {
     const name = renameVal.trim();
     if (!name || name === node.name) { setRenaming(false); return; }
     try {
-      await apiFetch(`/rag/folders/${node.id}`, { method: 'PATCH', body: JSON.stringify({ name }) });
+      await apiFetch(ROUTES.rag.folder(node.id), { method: 'PATCH', body: JSON.stringify({ name }) });
       onRefresh();
     } catch (e) { alert(`Erreur renommage : ${e.message}`); }
     setRenaming(false);
@@ -58,7 +59,7 @@ function FolderNode({ node, depth, selected, onSelect, onRefresh, docCounts }) {
     if (!window.confirm(`Supprimer le dossier « ${node.name} » ?`)) return;
     setDeleting(true);
     try {
-      await apiFetch(`/rag/folders/${node.id}`, { method: 'DELETE' });
+      await apiFetch(ROUTES.rag.folder(node.id), { method: 'DELETE' });
       onRefresh();
     } catch (e) { alert(e.message || 'Erreur suppression'); setDeleting(false); }
   };
@@ -67,7 +68,7 @@ function FolderNode({ node, depth, selected, onSelect, onRefresh, docCounts }) {
     const name = childName.trim();
     if (!name) { setCreatingChild(false); return; }
     try {
-      await apiFetch('/rag/folders', {
+      await apiFetch(ROUTES.rag.folders, {
         method: 'POST',
         body: JSON.stringify({ name, parent_id: node.id, service: node.service }),
       });
@@ -181,7 +182,7 @@ export default function RAGFolderTree({ selectedFolder, onSelect, folders, onRef
     const name = newName.trim();
     if (!name) { setCreating(false); return; }
     try {
-      await apiFetch('/rag/folders', {
+      await apiFetch(ROUTES.rag.folders, {
         method: 'POST',
         body: JSON.stringify({ name, parent_id: null, service: newService || 'global' }),
       });

@@ -1,3 +1,5 @@
+// Copyright 2026 LLM Council Project
+// Licensed under [LICENCE À DÉFINIR]
 import { useState, useEffect } from 'react';
 import { api, auth } from '../api';
 import './Sidebar.css';
@@ -143,7 +145,7 @@ export default function Sidebar({
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div className="sidebar-header">
         <div className="sidebar-title-row">
-          <h1>LLM Council</h1>
+          <h1>LLM <span>Council</span></h1>
           <button className="settings-btn" title="Paramètres"
             onClick={() => alert('Settings — bientôt disponible')}>⚙️</button>
         </div>

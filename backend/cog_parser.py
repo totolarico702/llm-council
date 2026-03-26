@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 cog_parser.py — Parser et validateur pour le format .cog v1.0
 """

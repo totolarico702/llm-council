@@ -75,8 +75,8 @@ export default function RAGUploadZone({ folder, onComplete }) {
       <div
         style={{
           ...ZONE_STYLE,
-          borderColor: dragging ? '#3B82F6' : '#555',
-          background:  dragging ? 'rgba(59,130,246,0.05)' : undefined,
+          borderColor: dragging ? '#b8941f' : '#555',
+          background:  dragging ? 'rgba(184,148,31,0.06)' : undefined,
         }}
         onDragOver={e => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}

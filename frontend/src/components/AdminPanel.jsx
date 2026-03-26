@@ -207,7 +207,7 @@ function UsersTab({ services }) {
                   <h4>Compétences identifiées</h4>
                   <div className="adm-tags">
                     {archivePreview.skills.map(s => (
-                      <span key={s} className="adm-tag" style={{ background: 'rgba(59,130,246,.15)', color: '#3B82F6', borderColor: 'rgba(59,130,246,.3)' }}>{s}</span>
+                      <span key={s} className="adm-tag" style={{ background: 'rgba(184,148,31,.08)', color: '#d4aa2a', borderColor: 'rgba(184,148,31,.25)' }}>{s}</span>
                     ))}
                   </div>
                 </div>
@@ -362,7 +362,7 @@ function PipelinesTab({ pipelines, onPipelinesChange }) {
   const openEdit   = (p) => setEditorState({ mode: 'edit',   pipeline: p });
 
   const handleSave = (updated, isNew) => {
-    setEditorState(null);
+    if (isNew) setEditorState(null);
     onPipelinesChange();
   };
 
@@ -507,7 +507,7 @@ function PermissionsTab({ services, pipelines }) {
   ];
   const serviceSubjects = services.map(s => ({ id: `service:${s.id}`, label: s.name }));
 
-  const actionColor = { use: '#3B82F6', edit: '#F59E0B' };
+  const actionColor = { use: '#b8941f', edit: '#cc9944' };
 
   if (loading) return <div className="adm-loading">Chargement…</div>;
 
@@ -574,7 +574,7 @@ function PermissionsTab({ services, pipelines }) {
             </tbody>
           </table>
           <div className="adm-perm-legend">
-            <span style={{ color: '#3B82F6' }}>✓ use</span> — voir et lancer
+            <span style={{ color: '#b8941f' }}>✓ use</span> — voir et lancer
             &nbsp;·&nbsp;
             <span style={{ color: '#F59E0B' }}>✓ edit</span> — modifier dans l'éditeur
             &nbsp;·&nbsp;
@@ -631,8 +631,8 @@ function ModelsTab() {
   };
 
   const STARS = ['', '⭐', '⭐⭐', '⭐⭐⭐'];
-  const TAG_COLORS = { code:'#3B82F6', vision:'#A855F7', reasoning:'#F59E0B',
-                       fast:'#22C55E', chat:'#64748B', free:'#06B6D4' };
+  const TAG_COLORS = { code:'#b8941f', vision:'#d4aa2a', reasoning:'#cc9944',
+                       fast:'#6dbb87', chat:'#7a7570', free:'#cc9944' };
 
   const allTags = [...new Set(allModels.flatMap(m => m.tags || []))].sort();
   const filtered = allModels.filter(m => {
@@ -712,7 +712,7 @@ function ModelsTab() {
                   </div>
                 </td>
                 <td className="adm-model-cost">
-                  {model.cost_stars > 0 ? STARS[model.cost_stars] : <span style={{color:'#06B6D4'}}>Gratuit</span>}
+                  {model.cost_stars > 0 ? STARS[model.cost_stars] : <span style={{color:'#6dbb87'}}>Gratuit</span>}
                   {model.cost_in > 0 && (
                     <span className="adm-cost-detail">↑{model.cost_in}$ ↓{model.cost_out}$/M</span>
                   )}
@@ -1049,9 +1049,9 @@ function ModelStatusTab() {
 
   const STARS = ['', '⭐', '⭐⭐', '⭐⭐⭐'];
   const TAG_COLORS = {
-    reasoning: '#8B5CF6', code: '#3B82F6', fast: '#22C55E',
-    vision: '#06B6D4', chat: '#64748B', european: '#F59E0B',
-    rgpd: '#F59E0B', analysis: '#EC4899', 'long-context': '#8B5CF6',
+    reasoning: '#d4aa2a', code: '#b8941f', fast: '#6dbb87',
+    vision: '#cc9944', chat: '#7a7570', european: '#cc9944',
+    rgpd: '#cc9944', analysis: '#d4aa2a', 'long-context': '#b8941f',
   };
 
   const statusIcon = (node) => {

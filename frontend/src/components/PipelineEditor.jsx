@@ -5,24 +5,24 @@ import PipelineAssistant from './PipelineAssistant';
 import './PipelineEditor.css';
 
 const ROLES = [
-  { value: 'explorer',       label: '🧭 Explorer',     color: '#3B82F6' },
-  { value: 'critic',         label: '🔬 Critique',      color: '#EF4444' },
-  { value: 'optimizer',      label: '⚡ Optimiseur',    color: '#22C55E' },
-  { value: 'devil_advocate', label: '😈 Contradicteur', color: '#A855F7' },
-  { value: 'synthesizer',    label: '🔗 Synthétiseur',  color: '#F59E0B' },
-  { value: 'chairman',       label: '👑 Chairman',      color: '#38BDF8' },
-  { value: 'reader',         label: '📖 Lecteur',       color: '#06B6D4' },
-  { value: 'custom',         label: '✏️ Custom',        color: '#94A3B8' },
+  { value: 'explorer',       label: '🧭 Explorer',     color: '#d4aa2a' },
+  { value: 'critic',         label: '🔬 Critique',      color: '#cc6666' },
+  { value: 'optimizer',      label: '⚡ Optimiseur',    color: '#6dbb87' },
+  { value: 'devil_advocate', label: '😈 Contradicteur', color: '#cc9944' },
+  { value: 'synthesizer',    label: '🔗 Synthétiseur',  color: '#b8941f' },
+  { value: 'chairman',       label: '👑 Chairman',      color: '#b8941f' },
+  { value: 'reader',         label: '📖 Lecteur',       color: '#7a7570' },
+  { value: 'custom',         label: '✏️ Custom',        color: '#7a7570' },
 ];
 
 const getRoleInfo = (role) => ROLES.find(r => r.value === role) || ROLES[0];
 
 // ── Tool nodes ────────────────────────────────────────────────────────────────
 const TOOL_TYPES = [
-  { value: 'web_search',  label: '🌐 Web Search',  color: '#0EA5E9',
+  { value: 'web_search',  label: '🌐 Web Search',  color: '#b8941f',
     description: 'Recherche web en temps réel',
     params: [{ key: 'query_from_input', label: "Requête depuis l'entrée", type: 'bool', default: true }] },
-  { value: 'rag_search',  label: '🧠 RAG Search',  color: '#8B5CF6',
+  { value: 'rag_search',  label: '🧠 RAG Search',  color: '#d4aa2a',
     description: 'Mémoire organisationnelle (archives employés)',
     params: [
       { key: 'limit',           label: 'Nb résultats',          type: 'text',   default: '5' },
@@ -39,7 +39,7 @@ const TOOL_TYPES = [
   { value: 'file_read',   label: '📄 File Read',   color: '#22C55E',
     description: 'Lit un fichier du workspace',
     params: [{ key: 'path', label: 'Chemin', type: 'text', default: './data/input.txt' }] },
-  { value: 'git',         label: '🔀 Git',          color: '#A855F7',
+  { value: 'git',         label: '🔀 Git',          color: '#cc9944',
     description: 'Commande git',
     params: [{ key: 'command', label: 'Commande', type: 'text', default: 'git status' }] },
   { value: 'http_call',   label: '🔌 HTTP Call',    color: '#EF4444',
@@ -296,7 +296,7 @@ function NodePanel({ node, availableModels, defaultModel, localModels, ollamaAva
             {[
               { value: 'none',      label: 'Aucune',      desc: 'Pas de recherche',              color: '#64748B' },
               { value: 'factcheck', label: 'Fact-check',  desc: 'Vérifie les faits clés',        color: '#F59E0B' },
-              { value: 'deep',      label: 'Deep search', desc: 'Recherche active et extensive',  color: '#0EA5E9' },
+              { value: 'deep',      label: 'Deep search', desc: 'Recherche active et extensive',  color: '#d4aa2a' },
             ].map(opt => (
               <label key={opt.value}
                 className={`pe-ws-chip${(node.web_search || 'none') === opt.value ? ' active' : ''}`}
@@ -346,6 +346,7 @@ export default function PipelineEditor({ group, onSave, onClose }) {
   const [pipelineId, setPipelineId] = useState(group?.id || null);
   const [confirmDelete, setConfirmDelete] = useState(false); // M9
   const [toast, setToast] = useState(null); // { msg, type: 'ok'|'err' }
+  const [allPipelines, setAllPipelines] = useState([]);
   const [importModal, setImportModal]     = useState(false);
   const [importText, setImportText]       = useState('');
   const [importPreview, setImportPreview] = useState(null);
@@ -426,6 +427,11 @@ export default function PipelineEditor({ group, onSave, onClose }) {
           cost_stars: m.cost_stars || 0,
         })));
       })
+      .catch(() => {});
+
+    apiFetch(ROUTES.pipelines.list)
+      .then(r => r?.ok ? r.json() : [])
+      .then(data => setAllPipelines(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
 
@@ -592,7 +598,7 @@ export default function PipelineEditor({ group, onSave, onClose }) {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     setZoom(prev => {
-      const next = Math.min(3, Math.max(0.2, prev * delta));
+      const next = Math.min(3, Math.max(0.1, prev * delta));
       // Ajuster le pan pour zoomer vers le curseur
       setPan(p => ({
         x: mouseX - (mouseX - p.x) * (next / prev),
@@ -622,6 +628,29 @@ export default function PipelineEditor({ group, onSave, onClose }) {
 
   // Bouton reset zoom/pan
   const resetView = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
+
+  // Charger un pipeline depuis le dropdown
+  const loadFromPipeline = (pipeline) => {
+    setPipelineName(pipeline.name || '');
+    setPipelineId(pipeline.id || null);
+    const loadNodes = pipeline.cog?.nodes || pipeline.nodes || [];
+    const loadEdges = pipeline.cog?.edges || pipeline.edges || [];
+    if (loadNodes.length > 0) {
+      setNodes(nodesFromBackend(loadNodes));
+      const es = loadEdges.length > 0 ? loadEdges : (() => {
+        const rebuilt = [];
+        loadNodes.forEach(n => {
+          (n.inputs || []).forEach(inp => {
+            if (inp !== 'user_prompt') rebuilt.push({ from: inp, to: n.id });
+          });
+        });
+        return rebuilt;
+      })();
+      setEdges(es);
+    }
+    setSaveStatus('saved');
+    setDirty(false);
+  };
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -995,10 +1024,19 @@ export default function PipelineEditor({ group, onSave, onClose }) {
             placeholder="Nom du pipeline…" />
 
           <div className="pe-toolbar-sep" />
-          <span className="pe-toolbar-hint">Modèles :</span>
-          {PRESETS.map(p => (
-            <button key={p.id} className="pe-preset-btn" onClick={() => applyPreset(p)}>{p.label}</button>
-          ))}
+          <select
+            className="pe-pipeline-select"
+            value=""
+            onChange={e => {
+              const found = allPipelines.find(p => p.id === e.target.value);
+              if (found) loadFromPipeline(found);
+            }}
+          >
+            <option value="">Charger un pipeline…</option>
+            {allPipelines.map(p => (
+              <option key={p.id} value={p.id}>{p.name || p.id}</option>
+            ))}
+          </select>
           <div className="pe-toolbar-sep" />
 
           <button className="pe-toolbar-btn" onClick={addNode} title="Ajouter un nœud LLM">＋ Nœud LLM</button>
@@ -1119,7 +1157,7 @@ export default function PipelineEditor({ group, onSave, onClose }) {
             <svg className="pe-svg" style={{ width: '4000px', height: '3000px' }}>
               <defs>
                 <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                  <path d="M0,0 L0,6 L8,3 z" fill="#3B82F6" opacity=".7" />
+                  <path d="M0,0 L0,6 L8,3 z" fill="#b8941f" opacity=".7" />
                 </marker>
               </defs>
 
@@ -1236,7 +1274,7 @@ export default function PipelineEditor({ group, onSave, onClose }) {
             <span className="pe-fi">{nodes.length} nœud{nodes.length > 1 ? 's' : ''}</span>
             <span className="pe-fi">{edges.length} connexion{edges.length > 1 ? 's' : ''}</span>
             <span className="pe-fi pe-fi-hint">
-              Glisse les nœuds · clic port <span style={{color:'#22C55E'}}>●</span> sortie → port <span style={{color:'#3B82F6'}}>●</span> entrée · clic arête = supprimer
+              Glisse les nœuds · clic port <span style={{color:'#6dbb87'}}>●</span> sortie → port <span style={{color:'#b8941f'}}>●</span> entrée · clic arête = supprimer
               · <strong>Molette</strong> = zoom · <strong>Alt+drag</strong> = pan
             </span>
             <button className="pe-zoom-reset" onClick={resetView}

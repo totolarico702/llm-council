@@ -239,8 +239,8 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: rgba(59,130,246,.2);
-  color: var(--accent);
+  background: var(--color-gold-subtle);
+  color: var(--color-gold-light);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -330,8 +330,8 @@
 .db-spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid rgba(59,130,246,.2);
-  border-top-color: var(--color-primary);
+  border: 3px solid var(--color-gold-subtle);
+  border-top-color: var(--color-gold);
   border-radius: 50%;
   animation: db-spin .8s linear infinite;
 }

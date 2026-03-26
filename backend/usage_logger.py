@@ -1,3 +1,5 @@
+# Copyright 2026 LLM Council Project
+# Licensed under [LICENCE À DÉFINIR]
 """
 Usage logger — LLM Council
 Capture les coûts OpenRouter et les persiste dans TinyDB (table usage_logs).
