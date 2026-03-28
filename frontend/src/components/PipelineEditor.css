@@ -260,6 +260,18 @@
 }
 .pe-canvas-wrap.pe-canvas-connecting { cursor: crosshair; }
 
+/* Overlays I/O — ancrés aux bords du canvas, hors du groupe zoom/pan */
+.pe-io-overlay {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  cursor: pointer;
+  user-select: none;
+}
+.pe-io-overlay-prompt  { left: 12px; }
+.pe-io-overlay-response { right: 12px; }
+
 /* SVG flèches */
 .pe-svg {
   position: absolute; inset: 0;

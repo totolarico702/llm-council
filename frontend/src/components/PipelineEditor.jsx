@@ -1554,8 +1554,8 @@ export default function PipelineEditor({ group, onSave, onClose }) {
               </div>
             </div>
 
-            {/* Hint canvas vide */}
-            {nodes.length === 0 && (
+            {/* Hint canvas vide — hors nœuds I/O qui sont toujours présents */}
+            {nodes.filter(n => n.node_type !== 'prompt' && n.node_type !== 'response').length === 0 && (
               <div className="pe-canvas-empty">
                 Clique sur <strong>＋ Nœud</strong> ou choisis un modèle de pipeline
               </div>

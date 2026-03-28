@@ -24,6 +24,32 @@ The result: answers that are more robust, more balanced, and more trustworthy th
 ## Quick Start
 
 ```bash
+git clone https://github.com/totolarico702/llm-council.git
+cd llm-council
+
+# Copy and configure environment
+cp .env.example .env
+# Edit .env and set your OPENROUTER_API_KEY
+
+# Install dependencies
+uv sync
+cd frontend && npm install && cd ..
+
+# Start
+./start.sh       # Linux/Mac
+start.bat        # Windows
+```
+
+Open [http://localhost:5173](http://localhost:5173) — default credentials: `admin` / `admin`
+
+> ⚠️ You will be forced to change the password on first login.
+
+---
+
+## Docker *(coming soon)*
+
+```bash
+# Not yet available — Docker image will be published on Docker Hub shortly
 docker run -d \
   -p 8001:8001 \
   -p 8002:8002 \
@@ -31,8 +57,6 @@ docker run -d \
   -v llmcouncil_data:/app/data \
   llmcouncil/council:latest
 ```
-
-That's it. API on `:8001`, MCP server on `:8002`, Pipeline Editor on `:8001`.
 
 ---
 
@@ -179,7 +203,6 @@ Pipelines are defined in `.cog` — a JSON grammar for cognitive workflows.
   },
   "nodes": [
     { "id": "input", "type": "input", "label": "User query" },
-    { "id": "inject_ctx", "type": "inject", "source": "input.context" },
     { "id": "analyst_1", "type": "llm", "model": "mistralai/mistral-medium-3",
       "system_prompt": "You are a market analyst..." },
     { "id": "analyst_2", "type": "llm", "model": "anthropic/claude-sonnet-4-5",
@@ -188,9 +211,8 @@ Pipelines are defined in `.cog` — a JSON grammar for cognitive workflows.
     { "id": "output", "type": "output", "label": "Final synthesis" }
   ],
   "edges": [
-    { "from": "input", "to": "inject_ctx" },
-    { "from": "inject_ctx", "to": "analyst_1" },
-    { "from": "inject_ctx", "to": "analyst_2" },
+    { "from": "input", "to": "analyst_1" },
+    { "from": "input", "to": "analyst_2" },
     { "from": "analyst_1", "to": "merge" },
     { "from": "analyst_2", "to": "merge" },
     { "from": "merge", "to": "output" }
@@ -222,7 +244,7 @@ Pipelines are defined in `.cog` — a JSON grammar for cognitive workflows.
 
 ## Pipeline Editor
 
-LLM Council ships with a **visual pipeline editor** at `http://localhost:8001`.
+LLM Council ships with a **visual pipeline editor** at `http://localhost:5173`.
 
 - Drag & drop DAG builder
 - AI assistant: describe a pipeline in natural language → generates `.cog`
@@ -266,16 +288,6 @@ npm install
 npm run dev
 ```
 
-Or use the included scripts:
-
-```bash
-# Windows
-start.bat
-
-# Linux/Mac
-./start.sh
-```
-
 ---
 
 ## Tech Stack
@@ -289,7 +301,7 @@ start.bat
 | Local LLMs | Ollama |
 | MCP | FastMCP |
 | Auth | JWT httpOnly cookies + API keys |
-| Deployment | Docker |
+| Deployment | Docker *(coming soon)* |
 
 ---
 
