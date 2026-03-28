@@ -160,11 +160,11 @@ export default function Sidebar({
           <div className="credits-box">
             <div className="credits-row">
               <span className="credits-label">💰 Solde</span>
-              <span className="credits-value">${credits.balance.toFixed(4)}</span>
+              <span className="credits-value">${(credits.balance ?? 0).toFixed(4)}</span>
             </div>
             <div className="credits-row">
               <span className="credits-label">📊 Utilisé</span>
-              <span className="credits-value used">${credits.usage.toFixed(4)}</span>
+              <span className="credits-value used">${(credits.usage ?? 0).toFixed(4)}</span>
             </div>
           </div>
         )}

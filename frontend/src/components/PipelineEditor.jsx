@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { apiFetch } from '../api';
 import { ROUTES } from '../api/routes';
 import PipelineAssistant from './PipelineAssistant';
@@ -454,6 +454,7 @@ export default function PipelineEditor({ group, onSave, onClose }) {
   // Zoom + Pan
   const [zoom, setZoom]   = useState(1);
   const [pan,  setPan]    = useState({ x: 0, y: 0 });
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const panRef = useRef(null); // { startX, startY, origPanX, origPanY }
   const zoomRef = useRef(zoom);
   const panValRef = useRef(pan);
@@ -746,6 +747,20 @@ export default function PipelineEditor({ group, onSave, onClose }) {
     el.addEventListener('wheel', onCanvasWheel, { passive: false });
     return () => el.removeEventListener('wheel', onCanvasWheel);
   }, [onCanvasWheel]);
+
+  // ResizeObserver — maintient canvasSize pour ancrer les overlays I/O
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      setCanvasSize({ width, height });
+    });
+    const { width, height } = el.getBoundingClientRect();
+    setCanvasSize({ width, height });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     window.addEventListener('mousemove', onCanvasMiddleMove);
@@ -1140,6 +1155,20 @@ export default function PipelineEditor({ group, onSave, onClose }) {
 
   const selectedNode = nodes.find(n => n.id === selectedId) || null;
 
+  // Positions world-coords des ports I/O (overlays CSS → canvas-inner coords)
+  // Prompt overlay : left: 12px, top: 50% → port de sortie au bord droit du nœud
+  // Response overlay : right: 12px, top: 50% → port d'entrée au bord gauche du nœud
+  const ioWorldPorts = useMemo(() => ({
+    prompt: {
+      x: (12 + NODE_W - pan.x) / zoom,
+      y: (canvasSize.height / 2 - pan.y) / zoom,
+    },
+    response: {
+      x: (canvasSize.width - 12 - NODE_W - pan.x) / zoom,
+      y: (canvasSize.height / 2 - pan.y) / zoom,
+    },
+  }), [canvasSize, pan, zoom]);
+
   // Trouver le terminal (aucun node ne le cible, hors nœuds I/O)
   const referenced = new Set(edges.map(e => e.from));
   const terminalId = nodes.find(n =>
@@ -1292,7 +1321,7 @@ export default function PipelineEditor({ group, onSave, onClose }) {
                 onClick={() => setCostPopup(v => !v)}
                 title="Coût estimé par requête — cliquer pour le détail"
               >
-                💰 ~${costEstimate.total_usd === 0 ? '0.000' : costEstimate.total_usd.toFixed(4)} / req
+                💰 ~${costEstimate.total_usd === 0 ? '0.000' : (costEstimate.total_usd ?? 0).toFixed(4)} / req
               </button>
               {costPopup && (
                 <div className="pe-cost-popup">
@@ -1307,13 +1336,13 @@ export default function PipelineEditor({ group, onSave, onClose }) {
                           <td className="pe-cost-node">{n.label || n.node_id}</td>
                           <td className="pe-cost-model">{n.model.split('/').pop()}</td>
                           <td className={`pe-cost-value ${n.is_local ? 'pe-cost-free' : ''}`}>
-                            {n.is_local ? '$0.00' : `$${n.cost_usd.toFixed(4)}`}
+                            {n.is_local ? '$0.00' : `$${(n.cost_usd ?? 0).toFixed(4)}`}
                           </td>
                         </tr>
                       ))}
                       <tr className="pe-cost-total-row">
                         <td colSpan={2}>TOTAL</td>
-                        <td className="pe-cost-value">${costEstimate.total_usd.toFixed(4)}</td>
+                        <td className="pe-cost-value">${(costEstimate.total_usd ?? 0).toFixed(4)}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -1367,11 +1396,12 @@ export default function PipelineEditor({ group, onSave, onClose }) {
               {edges.map(e => {
                 const fromNode = nodes.find(n => n.id === e.from);
                 const toNode   = nodes.find(n => n.id === e.to);
-                if (!fromNode || !toNode) return null;
-                const x1 = fromNode.x + NODE_W;
-                const y1 = fromNode.y + NODE_H / 2;
-                const x2 = toNode.x;
-                const y2 = toNode.y + NODE_H / 2;
+                if (!fromNode && e.from !== '__prompt__') return null;
+                if (!toNode   && e.to   !== '__response__') return null;
+                const x1 = e.from === '__prompt__'   ? ioWorldPorts.prompt.x   : fromNode.x + NODE_W;
+                const y1 = e.from === '__prompt__'   ? ioWorldPorts.prompt.y   : fromNode.y + NODE_H / 2;
+                const x2 = e.to   === '__response__' ? ioWorldPorts.response.x : toNode.x;
+                const y2 = e.to   === '__response__' ? ioWorldPorts.response.y : toNode.y + NODE_H / 2;
                 return (
                   <g key={`${e.from}-${e.to}`} className="pe-edge-group"
                     onClick={ev => { ev.stopPropagation(); deleteEdge(e.from, e.to); }}>
@@ -1384,16 +1414,18 @@ export default function PipelineEditor({ group, onSave, onClose }) {
 
               {/* Connexion en cours */}
               {connectingFrom && (() => {
-                const fromNode = nodes.find(n => n.id === connectingFrom);
-                if (!fromNode) return null;
-                const x1 = fromNode.x + NODE_W;
-                const y1 = fromNode.y + NODE_H / 2;
+                const x1 = connectingFrom === '__prompt__'
+                  ? ioWorldPorts.prompt.x
+                  : (nodes.find(n => n.id === connectingFrom)?.x ?? 0) + NODE_W;
+                const y1 = connectingFrom === '__prompt__'
+                  ? ioWorldPorts.prompt.y
+                  : (nodes.find(n => n.id === connectingFrom)?.y ?? 0) + NODE_H / 2;
                 return <path d={bezierPath(x1,y1,mousePos.x,mousePos.y)} className="pe-edge pe-edge-preview" />;
               })()}
             </svg>
 
-            {/* Nœuds */}
-            {nodes.map(node => {
+            {/* Nœuds (sans I/O — rendus comme overlays sur pe-canvas-wrap) */}
+            {nodes.filter(n => n.node_type !== 'prompt' && n.node_type !== 'response').map(node => {
               const ri = getRoleInfo(node.role);
               const isSelected = node.id === selectedId;
               const isTerminal = node.id === terminalId;
@@ -1488,6 +1520,39 @@ export default function PipelineEditor({ group, onSave, onClose }) {
             })}
 
             </div>{/* fin pe-canvas-inner */}
+
+            {/* Overlays I/O — ancrés aux bords, hors du groupe zoom/pan */}
+            <div
+              className={`pe-node pe-node-io pe-io-overlay pe-io-overlay-prompt${selectedPanel === 'prompt' ? ' pe-node-selected' : ''}`}
+              style={{ width: NODE_W, height: NODE_H, '--nc': '#b8941f' }}
+              onClick={e => { e.stopPropagation(); setSelectedPanel('prompt'); setSelectedId('__prompt__'); }}
+            >
+              <div className="pe-node-content">
+                <div className="pe-node-role" style={{ color: '#b8941f' }}>⤵ PROMPT</div>
+                <div className="pe-node-model">
+                  {promptModel ? promptModel.split('/').pop().replace(/:free$/, '') : '—'}
+                </div>
+              </div>
+              <div className="pe-port pe-port-out"
+                onClick={e => onOutPortClick(e, '__prompt__')}
+                title="Port de sortie" />
+            </div>
+
+            <div
+              className={`pe-node pe-node-io pe-io-overlay pe-io-overlay-response${selectedPanel === 'response' ? ' pe-node-selected' : ''}`}
+              style={{ width: NODE_W, height: NODE_H, '--nc': '#b8941f' }}
+              onClick={e => { e.stopPropagation(); setSelectedPanel('response'); setSelectedId('__response__'); }}
+            >
+              <div className="pe-port pe-port-in"
+                onClick={e => onInPortClick(e, '__response__')}
+                title="Port d'entrée" />
+              <div className="pe-node-content">
+                <div className="pe-node-role" style={{ color: '#b8941f' }}>⤴ RÉPONSE</div>
+                <div className="pe-node-model">
+                  {responseModel ? responseModel.split('/').pop().replace(/:free$/, '') : '—'}
+                </div>
+              </div>
+            </div>
 
             {/* Hint canvas vide */}
             {nodes.length === 0 && (
