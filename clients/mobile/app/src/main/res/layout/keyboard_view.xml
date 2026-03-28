@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#2a2a2a">
+
+    <com.cabinskollar.retroboard.RetroKeyboardView
+        android:id="@+id/keyboard_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:keyPreviewLayout="@null"
+        android:background="#2a2a2a"
+        android:keyTextColor="#d4d0c8"
+        android:keyTextSize="14sp"
+        android:labelTextSize="12sp"
+        android:shadowColor="#000000"
+        android:shadowRadius="0"
+        android:keyBackground="@drawable/key_bg_ibm" />
+
+    <!-- Rangée flèches — masquée par défaut -->
+    <LinearLayout
+        android:id="@+id/arrow_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        android:background="#1e2430"
+        android:padding="3dp">
+
+        <Button android:id="@+id/btn_ctrl"
+            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+            android:text="CTRL" android:textSize="12sp"
+            android:background="#2a2a3a" android:textColor="#d4d0c8" android:layout_margin="2dp" />
+        <Button android:id="@+id/btn_left"
+            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+            android:text="←" android:textSize="18sp"
+            android:background="#222838" android:textColor="#7090b8" android:layout_margin="2dp" />
+        <Button android:id="@+id/btn_down"
+            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+            android:text="↓" android:textSize="18sp"
+            android:background="#222838" android:textColor="#7090b8" android:layout_margin="2dp" />
+        <Button android:id="@+id/btn_up"
+            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+            android:text="↑" android:textSize="18sp"
+            android:background="#222838" android:textColor="#7090b8" android:layout_margin="2dp" />
+        <Button android:id="@+id/btn_right"
+            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+            android:text="→" android:textSize="18sp"
+            android:background="#222838" android:textColor="#7090b8" android:layout_margin="2dp" />
+        <Button android:id="@+id/btn_skin"
+            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+            android:text="🎨" android:textSize="16sp"
+            android:background="#2a2a3a" android:textColor="#d4d0c8" android:layout_margin="2dp" />
+
+    </LinearLayout>
+</LinearLayout>
