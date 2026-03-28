@@ -1,0 +1,26 @@
+/* index.css — styles globaux complémentaires
+   Les variables sont dans styles/variables.css
+   Le reset est dans styles/reset.css
+   Le markdown réutilisable est dans styles/components.css
+*/
+
+:root {
+  font-family: var(--font-main);
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+/* Surcharges markdown pour le contexte de l'app (dark) */
+.markdown-content pre {
+  background: var(--color-surface-2);
+}
+.markdown-content code {
+  background: var(--color-surface-2);
+  font-family: var(--font-mono);
+}
+.markdown-content blockquote {
+  border-left-color: var(--color-border);
+  color: var(--color-text-muted);
+}

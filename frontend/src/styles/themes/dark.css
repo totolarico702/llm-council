@@ -1,0 +1,32 @@
+/* ── Thème Dark — LLM Council ────────────────────────────────────────────────
+   Surcharge explicite du thème sombre (valeurs par défaut dans variables.css).
+   Pour créer un thème clair, créer themes/light.css avec d'autres valeurs.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Couleurs principales */
+  --color-primary:        #6366f1;
+  --color-primary-hover:  #4f46e5;
+  --color-accent:         #22d3ee;
+  --color-success:        #22c55e;
+  --color-warning:        #f59e0b;
+  --color-danger:         #ef4444;
+
+  /* Backgrounds */
+  --color-bg:             #0f1117;
+  --color-surface:        #1a1d2e;
+  --color-surface-2:      #232640;
+  --color-border:         #2e3155;
+
+  /* Texte */
+  --color-text:           #e2e8f0;
+  --color-text-muted:     #94a3b8;
+  --color-text-disabled:  #4b5563;
+}
+
+/* Body base */
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-main);
+}

@@ -1,0 +1,19 @@
+{
+  "cog_version": "1.0",
+  "name": "RAG + Analyse LLM",
+  "description": "Recherche dans la mémoire RAG puis analyse approfondie par un LLM",
+  "author": "admin",
+  "tags": ["rag", "analyse"],
+  "nodes": [
+    { "id": "input",       "type": "input",      "label": "Question utilisateur" },
+    { "id": "rag_docs",    "type": "rag_search",  "label": "Recherche documentaire", "limit": 5, "score_threshold": 0.3, "inject_as": "context" },
+    { "id": "llm_analyse", "type": "llm",         "label": "Analyse approfondie", "model": "mistralai/mistral-medium-3", "system_prompt": "Tu es un expert en analyse. Utilise le contexte fourni pour répondre précisément.", "temperature": 0.7 },
+    { "id": "output",      "type": "output",      "label": "Réponse finale", "format": "markdown" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "input",      "to": "rag_docs"    },
+    { "id": "e2", "from": "rag_docs",   "to": "llm_analyse" },
+    { "id": "e3", "from": "llm_analyse","to": "output"      }
+  ],
+  "config": { "language": "fr", "timeout_global": 120 }
+}

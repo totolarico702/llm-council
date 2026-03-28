@@ -1,0 +1,37 @@
+{
+  "cog_version": "1.0",
+  "catalog": {
+    "domain": "communication",
+    "name": "Rédaction communiqué de presse",
+    "description": "Rédige un communiqué de presse professionnel à partir des éléments clés fournis",
+    "use_case": "Lancement produit, annonce RH, événement institutionnel",
+    "estimated_cost": "$0.005",
+    "estimated_duration": "35s",
+    "required_rag_folders": ["communication"],
+    "recommended_models": ["anthropic/claude-sonnet-4-5"],
+    "tags": ["communication", "presse", "rédaction", "relations-presse"],
+    "icon": "📰"
+  },
+  "nodes": [
+    {
+      "id": "redaction_cp",
+      "role": "explorer",
+      "model": "anthropic/claude-sonnet-4-5",
+      "system_prompt": "Tu es un attaché de presse expérimenté. Rédige un communiqué de presse professionnel basé sur les informations fournies. Structure : Titre accrocheur / Sous-titre / Chapeau (5W) / Corps (3 paragraphes) / Citation dirigeant / À propos / Contact presse. Adapte le ton à l'événement.",
+      "temperature": 0.6,
+      "max_tokens": 2000,
+      "inputs": ["user_prompt"]
+    },
+    {
+      "id": "validation_cp",
+      "role": "chairman",
+      "model": "mistralai/mistral-medium-3",
+      "system_prompt": "Tu es un directeur de la communication. Revois le communiqué rédigé et vérifie : clarté du message, cohérence avec l'image de marque, respect du format journalistique, absence d'informations sensibles ou inexactes. Propose la version finale améliorée.",
+      "temperature": 0.4,
+      "max_tokens": 2000,
+      "inputs": ["redaction_cp"]
+    }
+  ],
+  "edges": [{"from": "redaction_cp", "to": "validation_cp"}],
+  "config": {"language": "fr", "timeout_global": 120}
+}

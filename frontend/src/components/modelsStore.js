@@ -1,0 +1,76 @@
+/**
+ * modelsStore.js — singleton partagé entre tous les composants.
+ * Le fetch n'est fait qu'une seule fois, au premier appel.
+ * Les composants s'abonnent via subscribe() et reçoivent la liste dès qu'elle est prête.
+ */
+
+import { apiFetch } from '../api';
+import { ROUTES } from '../api/routes';
+
+let models = [];          // cache
+let loading = false;
+let loaded  = false;
+let listeners = [];       // callbacks abonnés
+
+// Stub de compatibilité — le token est désormais géré via cookie httpOnly
+// eslint-disable-next-line no-unused-vars
+export function setTokenProvider(_fn) {}
+
+function notify() {
+  listeners.forEach(fn => fn(models));
+}
+
+export function getModels() {
+  return models;
+}
+
+export function isLoaded() {
+  return loaded;
+}
+
+/**
+ * S'abonner aux mises à jour.
+ * Retourne une fonction de désabonnement.
+ * Si les modèles sont déjà chargés, le callback est appelé immédiatement.
+ */
+export function subscribe(fn) {
+  listeners.push(fn);
+  if (loaded) fn(models);   // réponse immédiate si déjà en cache
+  return () => {
+    listeners = listeners.filter(l => l !== fn);
+  };
+}
+
+/**
+ * Déclencher le chargement (idempotent — ignoré si déjà en cours ou chargé).
+ * Appelé une fois dans App.jsx au montage.
+ */
+export async function loadModels() {
+  if (loaded || loading) return;
+  loading = true;
+  try {
+    const r = await apiFetch(ROUTES.models.list);
+    const d = await r.json();
+    models = d.models || [];
+    loaded = true;
+    notify();
+  } catch (e) {
+    console.error('modelsStore: impossible de charger les modèles', e);
+  } finally {
+    loading = false;
+  }
+}
+
+/**
+ * Hook React — retourne la liste et se met à jour quand elle arrive.
+ */
+import { useState, useEffect } from 'react';
+
+export function useModels() {
+  const [list, setList] = useState(models); // déjà en cache = immédiat
+  useEffect(() => {
+    const unsub = subscribe(setList);
+    return unsub;
+  }, []);
+  return list;
+}

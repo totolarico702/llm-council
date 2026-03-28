@@ -1,0 +1,49 @@
+{
+  "cog_version": "1.0",
+  "catalog": {
+    "domain": "juridique",
+    "name": "Analyse de contrat",
+    "description": "Analyse complète d'un contrat — risques, clauses abusives, points de négociation",
+    "use_case": "Revue de contrat avant signature",
+    "estimated_cost": "$0.010",
+    "estimated_duration": "60s",
+    "required_rag_folders": ["juridique"],
+    "recommended_models": ["anthropic/claude-sonnet-4-5"],
+    "tags": ["juridique", "contrat", "analyse", "négociation"],
+    "icon": "📄"
+  },
+  "nodes": [
+    {
+      "id": "lecture_contrat",
+      "role": "explorer",
+      "model": "anthropic/claude-sonnet-4-5",
+      "system_prompt": "Tu es un avocat d'affaires spécialisé en droit des contrats. Lis attentivement le contrat fourni et identifie : les parties, l'objet, la durée, les obligations de chaque partie, les clauses de résiliation, les pénalités, et les clauses potentiellement problématiques.",
+      "temperature": 0.2,
+      "max_tokens": 3000,
+      "inputs": ["user_prompt"]
+    },
+    {
+      "id": "analyse_risques",
+      "role": "explorer",
+      "model": "openai/gpt-4o",
+      "system_prompt": "Tu es un expert en gestion des risques juridiques. À partir du contrat analysé, identifie et évalue les risques : financiers, opérationnels, de réputation, et de conformité. Note chaque risque de 1 (faible) à 5 (critique).",
+      "temperature": 0.2,
+      "max_tokens": 2000,
+      "inputs": ["user_prompt"]
+    },
+    {
+      "id": "rapport_contrat",
+      "role": "chairman",
+      "model": "anthropic/claude-sonnet-4-5",
+      "system_prompt": "Tu es un conseiller juridique senior. Synthétise les analyses fournies en un rapport de revue contrat structuré : Résumé / Risques critiques / Clauses à renégocier / Recommandation finale (Signer / Renégocier / Refuser).",
+      "temperature": 0.2,
+      "max_tokens": 2000,
+      "inputs": ["lecture_contrat", "analyse_risques"]
+    }
+  ],
+  "edges": [
+    {"from": "lecture_contrat",  "to": "rapport_contrat"},
+    {"from": "analyse_risques",  "to": "rapport_contrat"}
+  ],
+  "config": {"language": "fr", "timeout_global": 180}
+}

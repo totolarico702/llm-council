@@ -1,0 +1,39 @@
+{
+  "cog_version": "1.0",
+  "catalog": {
+    "domain": "rh",
+    "name": "Analyse de CV",
+    "description": "Évalue un CV par rapport à une fiche de poste — scoring, points forts, alertes",
+    "use_case": "Tri de candidatures et préparation d'entretien",
+    "estimated_cost": "$0.004",
+    "estimated_duration": "30s",
+    "required_rag_folders": ["rh"],
+    "recommended_models": ["anthropic/claude-sonnet-4-5"],
+    "tags": ["rh", "recrutement", "cv", "candidature"],
+    "icon": "👤"
+  },
+  "nodes": [
+    {
+      "id": "analyse_cv",
+      "role": "explorer",
+      "model": "anthropic/claude-sonnet-4-5",
+      "system_prompt": "Tu es un expert RH spécialisé en recrutement. Analyse le CV fourni et évalue : compétences techniques, expériences pertinentes, formation, soft skills apparents. Score global sur 10. Identifie les forces et les lacunes par rapport à une fiche de poste type.",
+      "temperature": 0.3,
+      "max_tokens": 2000,
+      "inputs": ["user_prompt"],
+      "rag_enabled": true,
+      "rag_folder": "rh"
+    },
+    {
+      "id": "recommandation_rh",
+      "role": "chairman",
+      "model": "mistralai/mistral-medium-3",
+      "system_prompt": "Tu es un DRH expérimenté. À partir de l'analyse du CV, produis une fiche de synthèse candidat : Score / Recommandation (Oui / Peut-être / Non) / Questions à poser en entretien / Points de vigilance.",
+      "temperature": 0.3,
+      "max_tokens": 1500,
+      "inputs": ["analyse_cv"]
+    }
+  ],
+  "edges": [{"from": "analyse_cv", "to": "recommandation_rh"}],
+  "config": {"language": "fr", "timeout_global": 90}
+}

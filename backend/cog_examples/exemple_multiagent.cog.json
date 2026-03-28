@@ -1,0 +1,27 @@
+{
+  "cog_version": "1.0",
+  "name": "Multi-agents + Synthèse Chairman",
+  "description": "Plusieurs LLMs analysent en parallèle, puis un Chairman synthétise",
+  "author": "admin",
+  "tags": ["multi-agent", "council", "synthèse"],
+  "nodes": [
+    { "id": "input",        "type": "input",  "label": "Question utilisateur" },
+    { "id": "llm_claude",   "type": "llm",    "label": "Analyse Claude", "model": "anthropic/claude-3.5-sonnet", "system_prompt": "Analyse la question avec rigueur et précision.", "temperature": 0.7 },
+    { "id": "llm_mistral",  "type": "llm",    "label": "Analyse Mistral", "model": "mistralai/mistral-medium-3", "system_prompt": "Analyse la question en apportant une perspective différente.", "temperature": 0.7 },
+    { "id": "llm_gemini",   "type": "llm",    "label": "Analyse Gemini", "model": "google/gemini-2.0-flash-001", "system_prompt": "Analyse la question avec un regard critique.", "temperature": 0.7 },
+    { "id": "merge_all",    "type": "merge",  "label": "Fusion des analyses", "strategy": "concatenate", "separator": "\n\n---\n\n" },
+    { "id": "llm_chairman", "type": "llm",    "label": "Synthèse Chairman", "model": "mistralai/mistral-medium-3", "system_prompt": "Tu es le Chairman. Synthétise les analyses ci-dessous en une réponse définitive et équilibrée.", "temperature": 0.5 },
+    { "id": "output",       "type": "output", "label": "Synthèse finale", "format": "markdown" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "input",       "to": "llm_claude"   },
+    { "id": "e2", "from": "input",       "to": "llm_mistral"  },
+    { "id": "e3", "from": "input",       "to": "llm_gemini"   },
+    { "id": "e4", "from": "llm_claude",  "to": "merge_all"    },
+    { "id": "e5", "from": "llm_mistral", "to": "merge_all"    },
+    { "id": "e6", "from": "llm_gemini",  "to": "merge_all"    },
+    { "id": "e7", "from": "merge_all",   "to": "llm_chairman" },
+    { "id": "e8", "from": "llm_chairman","to": "output"       }
+  ],
+  "config": { "language": "fr", "timeout_global": 300, "chairman": "mistralai/mistral-medium-3" }
+}

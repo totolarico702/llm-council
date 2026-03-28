@@ -1,0 +1,482 @@
+/* ── RAG Admin — styles partagés entre tous les sous-composants ──────────── */
+
+/* Sections */
+.raga-section {
+  margin-top: 28px;
+  border: 1px solid var(--border, #30363D);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.raga-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surf2, #1C2333);
+  border-bottom: 1px solid var(--border, #30363D);
+}
+.raga-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text, #E6EDF3);
+  flex: 1;
+}
+.raga-section-body {
+  padding: 14px;
+  background: var(--surf, #161B22);
+}
+
+/* Boutons */
+.raga-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 5px;
+  border: 1px solid var(--border, #30363D);
+  background: var(--surf2, #1C2333);
+  color: var(--text, #E6EDF3);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.raga-btn:hover { background: var(--border, #30363D); }
+.raga-btn:disabled { opacity: .45; cursor: default; }
+.raga-btn-primary {
+  background: var(--accent, var(--color-primary));
+  border-color: var(--accent, var(--color-primary));
+  color: #fff;
+}
+.raga-btn-primary:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+.raga-btn-danger {
+  color: var(--danger, var(--color-danger));
+  border-color: transparent;
+}
+.raga-btn-danger:hover { background: rgba(248,81,73,.12); border-color: var(--danger, var(--color-danger)); }
+.raga-btn-ghost {
+  background: none;
+  border-color: transparent;
+  color: var(--dim, #8B949E);
+}
+.raga-btn-ghost:hover { background: rgba(255,255,255,.05); color: var(--text, #E6EDF3); }
+
+/* Tableaux */
+.raga-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.raga-table th {
+  text-align: left;
+  padding: 6px 10px;
+  color: var(--mute, #484F58);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border-bottom: 1px solid var(--border, #30363D);
+}
+.raga-table td {
+  padding: 7px 10px;
+  color: var(--text, #E6EDF3);
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  vertical-align: middle;
+}
+.raga-table tr:last-child td { border-bottom: none; }
+.raga-table tr:hover td { background: rgba(255,255,255,.025); }
+
+/* Messages d'état */
+.raga-empty {
+  padding: 18px;
+  text-align: center;
+  color: var(--mute, #484F58);
+  font-size: 12px;
+}
+.raga-error {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--danger, var(--color-danger));
+  background: rgba(248,81,73,.08);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.raga-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  color: var(--dim, #8B949E);
+  font-size: 12px;
+}
+.raga-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border, #30363D);
+  border-top-color: var(--accent, var(--color-primary));
+  border-radius: 50%;
+  animation: raga-spin .7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes raga-spin { to { transform: rotate(360deg); } }
+
+/* Inputs */
+.raga-input {
+  background: var(--bg, #0D1117);
+  border: 1px solid var(--border, #30363D);
+  border-radius: 5px;
+  color: var(--text, #E6EDF3);
+  font-size: 12px;
+  padding: 5px 9px;
+  outline: none;
+  transition: border-color .15s;
+}
+.raga-input:focus { border-color: var(--accent, var(--color-primary)); }
+.raga-input::placeholder { color: var(--mute, #484F58); }
+
+.raga-select {
+  background: var(--bg, #0D1117);
+  border: 1px solid var(--border, #30363D);
+  border-radius: 5px;
+  color: var(--text, #E6EDF3);
+  font-size: 12px;
+  padding: 5px 9px;
+  outline: none;
+  cursor: pointer;
+}
+.raga-select:focus { border-color: var(--accent, var(--color-primary)); }
+
+/* ── Arborescence dossiers ─────────────────────────────────────────────────── */
+.raga-tree { font-size: 12px; }
+.raga-tree-scroll {
+  max-height: 250px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, #30363D) transparent;
+}
+.raga-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--text, #E6EDF3);
+  transition: background .1s;
+  user-select: none;
+  position: relative;
+}
+.raga-tree-node:hover { background: rgba(255,255,255,.04); }
+.raga-tree-node:hover .raga-tree-actions,
+.raga-tree-node:focus-within .raga-tree-actions { display: flex; }
+.raga-tree-node.selected { background: var(--color-gold-subtle); color: var(--color-gold-light); }
+.raga-tree-chevron {
+  color: var(--mute, #484F58);
+  font-size: 10px;
+  width: 12px;
+  flex-shrink: 0;
+  transition: transform .15s;
+}
+.raga-tree-chevron.open { transform: rotate(90deg); }
+.raga-tree-icon { font-size: 13px; flex-shrink: 0; }
+.raga-tree-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.raga-tree-meta { font-size: 10px; color: var(--mute, #484F58); flex-shrink: 0; }
+.raga-tree-actions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.raga-tree-action-btn {
+  background: none;
+  border: none;
+  color: var(--dim, #8B949E);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1;
+  transition: color .1s, background .1s;
+}
+.raga-tree-action-btn:hover { color: var(--text, #E6EDF3); background: rgba(255,255,255,.1); }
+.raga-tree-action-btn.danger:hover { color: var(--danger, var(--color-danger)); background: rgba(248,81,73,.12); }
+.raga-tree-inline-edit {
+  flex: 1;
+  background: var(--bg, #0D1117);
+  border: 1px solid var(--accent, var(--color-primary));
+  border-radius: 4px;
+  color: var(--text, #E6EDF3);
+  font-size: 12px;
+  padding: 2px 6px;
+  outline: none;
+}
+.raga-tree-children { padding-left: 18px; }
+
+/* ── Breadcrumb arborescence ────────────────────────────────────────────────── */
+.raga-tree-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 6px;
+  margin-bottom: 6px;
+  background: var(--surf2, #1C2333);
+  border: 1px solid var(--border, #30363D);
+  border-radius: 5px;
+  flex-wrap: wrap;
+}
+.raga-tree-bc-item {
+  background: none;
+  border: none;
+  color: var(--dim, #8B949E);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 3px;
+  transition: color .15s, background .15s;
+  white-space: nowrap;
+}
+.raga-tree-bc-item:hover { color: var(--text, #E6EDF3); background: rgba(255,255,255,.07); }
+.raga-tree-bc-item.active { color: var(--accent, var(--color-primary)); font-weight: 600; cursor: default; }
+.raga-tree-bc-sep { color: var(--mute, #484F58); font-size: 10px; }
+
+/* ── Upload zone ───────────────────────────────────────────────────────────── */
+.raga-dropzone {
+  border: 2px dashed var(--border, #30363D);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  color: var(--dim, #8B949E);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  margin-top: 12px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.raga-dropzone:hover,
+.raga-dropzone.dragging {
+  border-color: var(--color-gold);
+  background: var(--color-gold-subtle);
+  color: var(--text, #E6EDF3);
+}
+.raga-dropzone-icon { font-size: 24px; margin-bottom: 8px; }
+.raga-dropzone-hint { font-size: 11px; color: var(--mute, #484F58); margin-top: 4px; }
+
+/* Barre de progression upload */
+.raga-upload-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.raga-upload-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--surf2, #1C2333);
+  border-radius: 5px;
+  font-size: 11px;
+  color: var(--dim, #8B949E);
+}
+.raga-upload-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.raga-upload-progress {
+  width: 80px;
+  height: 4px;
+  background: var(--border, #30363D);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.raga-upload-bar {
+  height: 100%;
+  background: var(--accent, var(--color-primary));
+  transition: width .3s;
+}
+.raga-upload-status-ok  { color: var(--color-success); }
+.raga-upload-status-err { color: var(--danger, var(--color-danger)); font-size: 10px; }
+
+/* ── ACL Editor ─────────────────────────────────────────────────────────────── */
+.raga-acl-inherit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border, #30363D);
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--dim, #8B949E);
+}
+.raga-acl-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.raga-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.raga-badge-read  { background: rgba(34,197,94,.15); color: var(--color-success); }
+.raga-badge-write { background: var(--color-gold-subtle); color: var(--color-gold-light); }
+.raga-badge-admin { background: rgba(245,158,11,.15); color: var(--color-warning); }
+.raga-badge-none  { background: rgba(248,81,73,.15);  color: var(--color-danger); }
+
+/* ── Audit Log ──────────────────────────────────────────────────────────────── */
+.raga-audit-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.raga-audit-action-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.raga-audit-badge-document_uploaded { background: rgba(34,197,94,.15); color: var(--color-success); }
+.raga-audit-badge-document_deleted  { background: rgba(248,81,73,.15);  color: var(--color-danger); }
+.raga-audit-badge-folder_deleted    { background: rgba(248,81,73,.15);  color: var(--color-danger); }
+.raga-audit-badge-folder_created    { background: var(--color-gold-subtle); color: var(--color-gold-light); }
+.raga-audit-badge-acl_modified      { background: rgba(245,158,11,.15); color: var(--color-warning); }
+.raga-audit-pagination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--dim, #8B949E);
+}
+.raga-audit-details {
+  font-size: 10px;
+  color: var(--mute, #484F58);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── react-arborist — conteneur ─────────────────────────────────────────────── */
+.raga-arb-container {
+  height: calc(100vh - 280px);
+  min-height: 200px;
+  overflow: hidden;
+}
+
+/* ── react-arborist — ligne nœud ────────────────────────────────────────────── */
+.raga-arb-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  height: 32px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text, #E6EDF3);
+  transition: background .1s;
+  user-select: none;
+  box-sizing: border-box;
+}
+.raga-arb-row:hover   { background: rgba(255,255,255,.04); }
+.raga-arb-row.selected { background: var(--color-gold-subtle); color: var(--color-gold-light); }
+.raga-arb-doc { color: var(--dim, #8B949E); }
+.raga-arb-editing { padding: 0 8px; }
+
+.raga-arb-chevron {
+  font-size: 10px;
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--mute, #484F58);
+}
+.raga-arb-icon { font-size: 13px; flex-shrink: 0; }
+.raga-arb-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.raga-arb-meta {
+  font-size: 10px;
+  color: var(--mute, #484F58);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.raga-arb-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Drawer ACL ──────────────────────────────────────────────────────────────── */
+.raga-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 200;
+}
+.raga-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  background: var(--surf, #161B22);
+  border-left: 1px solid var(--border, #30363D);
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0,0,0,.4);
+  animation: raga-slide-in .2s ease;
+}
+@keyframes raga-slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+.raga-drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border, #30363D);
+  flex-shrink: 0;
+}
+.raga-drawer-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #E6EDF3);
+}
+.raga-drawer-subtitle {
+  font-size: 11px;
+  color: var(--dim, #8B949E);
+  margin-top: 3px;
+}
+.raga-drawer-close {
+  background: none;
+  border: none;
+  color: var(--dim, #8B949E);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color .1s, background .1s;
+}
+.raga-drawer-close:hover { color: var(--text, #E6EDF3); background: rgba(255,255,255,.08); }
+.raga-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, #30363D) transparent;
+}

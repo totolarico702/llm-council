@@ -1,0 +1,30 @@
+{
+  "cog_version": "1.0",
+  "catalog": {
+    "domain": "sales",
+    "name": "Qualification de lead",
+    "description": "Évalue et score un lead entrant — BANT, potentiel, prochaine action recommandée",
+    "use_case": "Qualification rapide des prospects entrants",
+    "estimated_cost": "$0.004",
+    "estimated_duration": "25s",
+    "required_rag_folders": ["sales/icp"],
+    "recommended_models": ["anthropic/claude-sonnet-4-5"],
+    "tags": ["sales", "lead", "qualification", "crm", "bant"],
+    "icon": "🎯"
+  },
+  "nodes": [
+    {
+      "id": "scoring_lead",
+      "role": "chairman",
+      "model": "anthropic/claude-sonnet-4-5",
+      "system_prompt": "Tu es un expert commercial. Évalue ce lead selon le framework BANT (Budget, Authority, Need, Timeline). Score de 1 à 10. Identifie : le niveau d'intérêt, les objections potentielles, les next steps recommandés (appel découverte / démo / email nurturing / disqualifier). Rédige le message d'approche idéal.",
+      "temperature": 0.3,
+      "max_tokens": 1500,
+      "inputs": ["user_prompt"],
+      "rag_enabled": true,
+      "rag_folder": "sales/icp"
+    }
+  ],
+  "edges": [],
+  "config": {"language": "fr", "timeout_global": 60}
+}

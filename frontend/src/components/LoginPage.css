@@ -1,0 +1,219 @@
+/* LoginPage.css — Salle de Conseil — L'Entrée du Conseil */
+
+.login-root {
+  background: var(--color-bg);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  /* Pattern diagonal subtil — filigrane doré */
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 40px,
+      rgba(184,148,31,0.015) 40px,
+      rgba(184,148,31,0.015) 41px
+    );
+}
+
+/* Grille de fond — supprimée (remplacée par pattern diagonal) */
+.login-bg { display: none; }
+
+/* Les orbs sont supprimés */
+.login-orb { display: none; }
+
+/* Card — fenêtre éditoriale avec barre dorée top */
+.login-card {
+  position: relative;
+  z-index: 1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 2px solid var(--color-gold);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl);
+  width: 380px;
+  box-shadow: var(--shadow-lg), var(--shadow-gold);
+  overflow: hidden;
+}
+
+/* Inner layout */
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--spacing-md);
+}
+
+.login-logo-icon {
+  font-size: 18px;
+  opacity: 0.5;
+}
+
+.login-logo-text {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wider);
+  color: var(--color-text-muted);
+}
+
+/* Titres */
+.login-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-black);
+  color: var(--color-text);
+  text-align: center;
+  letter-spacing: var(--letter-spacing-tight);
+  margin: 0 0 var(--spacing-xs);
+  line-height: var(--line-height-tight);
+}
+
+.login-subtitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--font-size-sm);
+  color: var(--color-gold-light);
+  text-align: center;
+  margin: 0 0 var(--spacing-xl);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+/* Séparateur doré */
+.login-card::after {
+  content: '';
+  display: block;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-gold-dim) 20%,
+    var(--color-gold) 50%,
+    var(--color-gold-dim) 80%,
+    transparent 100%
+  );
+  margin: 0 0 var(--spacing-lg);
+  position: absolute;
+  left: var(--spacing-2xl);
+  right: var(--spacing-2xl);
+  top: calc(var(--spacing-2xl) + 36px + var(--spacing-xs) + 16px + var(--spacing-xl) - var(--spacing-lg));
+  pointer-events: none;
+}
+
+/* Form */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.login-field label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-wider);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.login-field input {
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-light);
+  padding: var(--spacing-sm) var(--spacing-md);
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.login-field input::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.login-field input:focus {
+  border-color: var(--color-gold-dim);
+  box-shadow: 0 0 0 3px rgba(184,148,31,0.08);
+}
+
+.login-field input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Error */
+.login-error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: rgba(107, 26, 26, 0.2);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-danger-text);
+}
+
+/* Button */
+.login-btn {
+  margin-top: var(--spacing-xs);
+  background: var(--color-gold);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-inverse);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wider);
+  text-transform: uppercase;
+  padding: 10px var(--spacing-lg);
+  box-shadow: var(--shadow-gold);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  width: 100%;
+}
+
+.login-btn:hover:not(:disabled) {
+  background: var(--color-gold-light);
+  box-shadow: 0 0 28px rgba(184,148,31,0.25);
+}
+
+.login-btn:active:not(:disabled) {
+  opacity: 0.9;
+}
+
+.login-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Spinner */
+.login-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(10,10,10,0.3);
+  border-top-color: var(--color-text-inverse);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

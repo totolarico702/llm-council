@@ -1,0 +1,71 @@
+/* frontend/src/styles/animations.css */
+/* LLM Council — Micro-interactions Salle de Conseil */
+
+/* ── Apparition messages — fade + slide subtil ───────────────────────────── */
+@keyframes message-appear {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-new {
+  animation: message-appear 0.25s ease forwards;
+}
+
+/* ── Pulsation statut actif — vert ────────────────────────────────────────── */
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--color-success-text); }
+  50%       { opacity: 0.7; box-shadow: 0 0 10px var(--color-success-text); }
+}
+
+.status-active,
+.status-dot.active {
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+/* ── Lueur dorée — bouton primaire au hover ───────────────────────────────── */
+@keyframes gold-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(184,148,31,0.15); }
+  50%       { box-shadow: 0 0 24px rgba(184,148,31,0.3); }
+}
+
+/* ── Skeleton loading — pendant les appels LLM ───────────────────────────── */
+@keyframes shimmer {
+  from { background-position: -400px 0; }
+  to   { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0%,
+    var(--color-surface-raised) 50%,
+    var(--color-surface) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Spin (spinners) ─────────────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Fade in ─────────────────────────────────────────────────────────────── */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Typewriter (compat ancien) ──────────────────────────────────────────── */
+@keyframes typewriter-appear {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Lueur or sur hover des nœuds pipeline ───────────────────────────────── */
+@keyframes node-glow {
+  0%, 100% { box-shadow: var(--shadow-md); }
+  50%       { box-shadow: var(--shadow-md), var(--shadow-gold); }
+}

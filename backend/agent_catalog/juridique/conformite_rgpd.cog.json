@@ -1,0 +1,45 @@
+{
+  "cog_version": "1.0",
+  "catalog": {
+    "domain": "juridique",
+    "name": "Analyse de conformité RGPD",
+    "description": "Analyse la conformité RGPD d'un contrat ou document fourni",
+    "use_case": "Vérification avant signature d'un contrat fournisseur",
+    "estimated_cost": "$0.008",
+    "estimated_duration": "45s",
+    "required_rag_folders": ["juridique/rgpd"],
+    "recommended_models": ["anthropic/claude-sonnet-4-5"],
+    "tags": ["juridique", "rgpd", "conformité", "contrat"],
+    "icon": "⚖️"
+  },
+  "nodes": [
+    {
+      "id": "analyse_rgpd",
+      "role": "explorer",
+      "model": "anthropic/claude-sonnet-4-5",
+      "system_prompt": "Tu es un expert juridique spécialisé en protection des données personnelles et RGPD. Analyse le document fourni et identifie les points de non-conformité avec le RGPD. Structure ta réponse en sections : ✅ Conforme / ⚠️ À vérifier / ❌ Non conforme. Cite les articles RGPD pertinents.",
+      "temperature": 0.2,
+      "max_tokens": 3000,
+      "inputs": ["user_prompt"],
+      "rag_enabled": true,
+      "rag_folder": "juridique/rgpd"
+    },
+    {
+      "id": "synthese_juridique",
+      "role": "chairman",
+      "model": "anthropic/claude-sonnet-4-5",
+      "system_prompt": "Tu es un juriste senior. À partir de l'analyse RGPD fournie, produis un rapport de conformité structuré avec : 1) Résumé exécutif, 2) Points critiques à corriger, 3) Recommandations prioritaires, 4) Risques résiduels.",
+      "temperature": 0.2,
+      "max_tokens": 2000,
+      "inputs": ["analyse_rgpd"]
+    }
+  ],
+  "edges": [
+    {"from": "analyse_rgpd", "to": "synthese_juridique"}
+  ],
+  "config": {
+    "language": "fr",
+    "timeout_global": 120,
+    "chairman": "anthropic/claude-sonnet-4-5"
+  }
+}

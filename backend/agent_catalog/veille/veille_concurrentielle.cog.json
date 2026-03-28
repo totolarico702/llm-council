@@ -1,0 +1,52 @@
+{
+  "cog_version": "1.0",
+  "catalog": {
+    "domain": "veille",
+    "name": "Veille concurrentielle",
+    "description": "Analyse hebdomadaire de la concurrence — nouveautés, tendances, opportunités",
+    "use_case": "Rapport de veille stratégique pour la direction",
+    "estimated_cost": "$0.006",
+    "estimated_duration": "90s",
+    "required_rag_folders": [],
+    "recommended_models": ["google/gemini-2.0-flash-001"],
+    "tags": ["veille", "concurrence", "stratégie", "marché"],
+    "icon": "🔭",
+    "trigger_suggestion": {"type": "scheduled", "cron": "0 8 * * 1", "description": "Tous les lundis à 8h"}
+  },
+  "nodes": [
+    {
+      "id": "collecte_actus",
+      "role": "explorer",
+      "model": "google/gemini-2.0-flash-001",
+      "system_prompt": "Tu es un analyste en veille stratégique. Recherche et synthétise les actualités récentes concernant le secteur et les concurrents mentionnés. Identifie les lancements produits, mouvements RH, levées de fonds, partenariats et communications récentes.",
+      "temperature": 0.4,
+      "max_tokens": 2000,
+      "inputs": ["user_prompt"],
+      "web_search": "deep"
+    },
+    {
+      "id": "analyse_tendances",
+      "role": "explorer",
+      "model": "mistralai/mistral-medium-3",
+      "system_prompt": "Tu es un stratège d'entreprise. Analyse les tendances du marché identifiées dans les actualités collectées. Identifie les menaces et opportunités pour notre organisation.",
+      "temperature": 0.4,
+      "max_tokens": 1500,
+      "inputs": ["collecte_actus"]
+    },
+    {
+      "id": "rapport_veille",
+      "role": "chairman",
+      "model": "anthropic/claude-sonnet-4-5",
+      "system_prompt": "Tu es un directeur stratégique. Synthétise en un rapport de veille exécutif : 1) Faits marquants de la semaine, 2) Mouvements concurrentiels, 3) Tendances sectorielles, 4) Opportunités à saisir, 5) Alertes stratégiques. Format : clair, actionnable, < 500 mots.",
+      "temperature": 0.4,
+      "max_tokens": 1500,
+      "inputs": ["collecte_actus", "analyse_tendances"]
+    }
+  ],
+  "edges": [
+    {"from": "collecte_actus",    "to": "analyse_tendances"},
+    {"from": "collecte_actus",    "to": "rapport_veille"},
+    {"from": "analyse_tendances", "to": "rapport_veille"}
+  ],
+  "config": {"language": "fr", "timeout_global": 300}
+}

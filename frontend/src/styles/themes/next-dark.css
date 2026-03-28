@@ -1,0 +1,23 @@
+/* frontend/src/styles/themes/next-dark.css */
+/* LLM Council — Variante Council Profond */
+/* Légèrement plus contrasté que le thème Council de base */
+
+[data-theme="next-dark"] {
+  --color-bg:             #060606;
+  --color-surface:        #0d0d0d;
+  --color-surface-2:      #131313;
+  --color-surface-raised: #1a1a1a;
+  --color-surface-inset:  #040404;
+
+  --color-border:         #222222;
+  --color-border-muted:   #181818;
+
+  --color-text:           #f5f2eb;
+  --color-text-muted:     #6a6560;
+  --color-text-disabled:  #302e2c;
+
+  --color-gold:           #c9a020;
+  --color-gold-light:     #e0b830;
+  --color-gold-dim:       #7a6015;
+  --color-gold-subtle:    rgba(201,160,32,0.08);
+}

@@ -1,0 +1,49 @@
+{
+  "cog_version": "1.0",
+  "catalog": {
+    "domain": "fiscal",
+    "name": "Analyse de bilan comptable",
+    "description": "Analyse financière complète d'un bilan — ratios, tendances, recommandations",
+    "use_case": "Revue annuelle ou trimestrielle des états financiers",
+    "estimated_cost": "$0.012",
+    "estimated_duration": "60s",
+    "required_rag_folders": ["fiscal"],
+    "recommended_models": ["anthropic/claude-sonnet-4-5"],
+    "tags": ["fiscal", "comptabilité", "bilan", "finance", "ratios"],
+    "icon": "📊"
+  },
+  "nodes": [
+    {
+      "id": "analyse_bilan",
+      "role": "explorer",
+      "model": "anthropic/claude-sonnet-4-5",
+      "system_prompt": "Tu es un expert-comptable et analyste financier. Analyse le bilan fourni et calcule les ratios clés : liquidité, solvabilité, rentabilité, endettement. Compare aux normes sectorielles et identifie les points d'attention.",
+      "temperature": 0.1,
+      "max_tokens": 3000,
+      "inputs": ["user_prompt"]
+    },
+    {
+      "id": "analyse_fiscale",
+      "role": "explorer",
+      "model": "openai/gpt-4o",
+      "system_prompt": "Tu es un fiscaliste spécialisé en entreprise. À partir des données financières, identifie les opportunités d'optimisation fiscale légale, les risques de redressement potentiels et les provisions recommandées.",
+      "temperature": 0.2,
+      "max_tokens": 2000,
+      "inputs": ["user_prompt"]
+    },
+    {
+      "id": "rapport_direction",
+      "role": "chairman",
+      "model": "anthropic/claude-sonnet-4-5",
+      "system_prompt": "Tu es un directeur financier. Synthétise les analyses en un rapport direction : 1) Performance financière, 2) Risques identifiés, 3) Opportunités fiscales, 4) Recommandations stratégiques, 5) Indicateurs à surveiller.",
+      "temperature": 0.3,
+      "max_tokens": 2000,
+      "inputs": ["analyse_bilan", "analyse_fiscale"]
+    }
+  ],
+  "edges": [
+    {"from": "analyse_bilan",   "to": "rapport_direction"},
+    {"from": "analyse_fiscale", "to": "rapport_direction"}
+  ],
+  "config": {"language": "fr", "timeout_global": 180}
+}

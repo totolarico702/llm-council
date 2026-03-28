@@ -1,0 +1,21 @@
+{
+  "cog_version": "1.0",
+  "name": "Web Search + Fact-Check",
+  "description": "Recherche web puis vérification des faits avant synthèse finale",
+  "author": "admin",
+  "tags": ["web", "fact-check", "actualité"],
+  "nodes": [
+    { "id": "input",       "type": "input",   "label": "Question utilisateur" },
+    { "id": "web_search",  "type": "tool",    "label": "Recherche web", "tool_type": "web_search", "max_results": 5 },
+    { "id": "fact_check",  "type": "tool",    "label": "Vérification des faits", "tool_type": "fact_check" },
+    { "id": "llm_synth",   "type": "llm",     "label": "Synthèse finale", "model": "mistralai/mistral-medium-3", "system_prompt": "Synthétise les informations vérifiées en une réponse claire et factuelle.", "temperature": 0.3 },
+    { "id": "output",      "type": "output",  "label": "Réponse vérifiée", "format": "markdown" }
+  ],
+  "edges": [
+    { "id": "e1", "from": "input",      "to": "web_search" },
+    { "id": "e2", "from": "web_search", "to": "fact_check" },
+    { "id": "e3", "from": "fact_check", "to": "llm_synth"  },
+    { "id": "e4", "from": "llm_synth",  "to": "output"     }
+  ],
+  "config": { "language": "fr", "timeout_global": 180 }
+}

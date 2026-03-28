@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Keys and secrets
+.env
+
+# Data files
+data/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Logs and coverage
+*.jsonl
+*.log
+.coverage
+
+# Local dev artifacts
+doc_perso/
+outputs/
+
+# Media
+*.mp4
+
+# Dev briefs (not for public repo)
+BRIEF_*.md
+SPEC_*.md
+QUICKWINS.md

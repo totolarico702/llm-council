@@ -1,0 +1,42 @@
+version: '3.9'
+
+# ── LLM Council V3 — Docker Compose ──────────────────────────────────────────
+# Déploiement : docker compose up -d
+#
+# Ports :
+#   8001 → API REST + PipelineEditor (SPA)
+#   8002 → MCP Server (SSE)
+#
+# Variables d'environnement requises :
+#   OPENROUTER_API_KEY  — clé OpenRouter (obligatoire)
+#   JWT_SECRET          — secret JWT (obligatoire en production)
+#   OLLAMA_URL          — URL Ollama local (optionnel)
+
+services:
+
+  council:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: llmcouncil/council:latest
+    ports:
+      - "8001:8001"   # API REST + PipelineEditor
+      - "8002:8002"   # MCP Server SSE
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - JWT_SECRET=${JWT_SECRET:-llm-council-dev-secret-CHANGE-IN-PROD}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MCP_PORT=8002
+      - DATA_DIR=/app/data
+    volumes:
+      - llmcouncil_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  llmcouncil_data:
