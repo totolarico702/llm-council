@@ -984,11 +984,8 @@ export default function PipelineEditor({ group, onSave, onClose }) {
                           web_search: n.web_search || 'none',
                           role_prompt: n.role_prompt || '' };
       });
-    // Exclure les arêtes impliquant les nœuds I/O
-    const backendEdges = edges.filter(
-      e => e.from !== '__prompt__' && e.to !== '__prompt__' &&
-           e.from !== '__response__' && e.to !== '__response__'
-    );
+    // Conserver toutes les arêtes y compris les connexions vers les nœuds I/O fixes
+    const backendEdges = edges;
     // Sauvegarder les positions des nœuds I/O dans config
     const promptNode   = nodes.find(n => n.node_type === 'prompt');
     const responseNode = nodes.find(n => n.node_type === 'response');

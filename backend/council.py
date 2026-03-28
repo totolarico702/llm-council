@@ -16,8 +16,12 @@ import re
 from collections import defaultdict
 from typing import Any, Optional
 
+import structlog
+
 from .openrouter import query_model, query_models_parallel
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
+
+log = structlog.get_logger("council")
 
 
 # ── Web search modes ──────────────────────────────────────────────────────────
@@ -127,15 +131,19 @@ class DeliberationSession:
         use_web = (self.web_mode == WEB_DEEP)
         thread  = list(self.history) + [{"role": "user", "content": self.query}]
 
+        log.info("stage1_start", models=self.models, web=use_web)
         raw_responses = await query_models_parallel(
             self.models, thread, web_search=use_web
         )
 
-        return [
+        opinions = [
             {"model": m, "response": r.get("content", "")}
             for m, r in raw_responses.items()
             if r is not None
         ]
+        log.info("stage1_done", responses=len(opinions),
+                 failed=len(self.models) - len(opinions))
+        return opinions
 
     # ── Stage 2 ───────────────────────────────────────────────────────────────
 
@@ -214,9 +222,12 @@ class DeliberationSession:
                 "parse_failed": not parsed,
             }
 
+        log.info("stage2_start", models=self.models, opinions=len(opinions))
         tasks   = [_evaluate_one(m) for m in self.models]
         results = await asyncio.gather(*tasks)
         reviews = [r for r in results if r is not None]
+        parse_failures = sum(1 for r in reviews if r.get("parse_failed"))
+        log.info("stage2_done", reviews=len(reviews), parse_failures=parse_failures)
         return reviews, code_map
 
     # ── Stage 3 ───────────────────────────────────────────────────────────────
@@ -269,12 +280,17 @@ class DeliberationSession:
         )
 
         messages = list(self.history) + [{"role": "user", "content": prompt}]
+        log.info("stage3_start", chairman=self.chairman, web=use_web,
+                 opinions=len(opinions), reviews=len(reviews))
         result   = await query_model(self.chairman, messages, web_search=use_web)
 
         if result is None:
+            log.error("stage3_failed", chairman=self.chairman)
             return {"model": self.chairman, "response": "Error: Chairman synthesis failed."}
 
-        return {"model": self.chairman, "response": result.get("content", "")}
+        response_text = result.get("content", "")
+        log.info("stage3_done", chairman=self.chairman, response_len=len(response_text))
+        return {"model": self.chairman, "response": response_text}
 
 
 # ── Module-level entry points (used by main.py and tests) ─────────────────────

@@ -150,7 +150,11 @@ function App() {
   };
 
   const handleSendMessage = async (content, models, webSearchMode = 'none', documentContent = null, attachmentNames = [], pipelineNodes = null, caffeineMode = false, pipelineInfo = null) => {
-    if (!currentConversationId) return;
+    console.log('[handleSendMessage] called', { convId: currentConversationId, pipelineNodes: pipelineNodes?.length ?? null, models });
+    if (!currentConversationId) {
+      console.warn('[handleSendMessage] blocked — no currentConversationId');
+      return;
+    }
     const convId = currentConversationId;
     const controller = new AbortController();
     setActiveStreams(prev => ({ ...prev, [convId]: controller }));
@@ -344,13 +348,14 @@ function App() {
       );
     } catch (e) {
       if (e?.name !== 'AbortError') {
-        console.error('Failed to send message:', e);
+        console.error('[handleSendMessage] stream error:', e);
         if (currentConvIdRef.current === convId) {
-          setCurrentConversation(prev => ({ ...prev, messages: prev.messages.slice(0, -2) }));
-          setIsLoading(false);
+          setCurrentConversation(prev => prev ? { ...prev, messages: prev.messages.slice(0, -2) } : prev);
         }
       }
     } finally {
+      // Toujours débloquer isLoading, même si le stream se ferme sans event 'complete'
+      if (currentConvIdRef.current === convId) setIsLoading(false);
       setActiveStreams(prev => { const n = { ...prev }; delete n[convId]; return n; });
     }
   };

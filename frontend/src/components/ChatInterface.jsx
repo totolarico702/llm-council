@@ -328,8 +328,9 @@ export default function ChatInterface({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('[handleSubmit] called', { input: input.trim().slice(0, 40), isLoading, pipelineNodes: pipelineNodes?.length ?? null });
     if (!input.trim() && attachments.length === 0) return;
-    if (isLoading) return;
+    if (isLoading) { console.warn('[handleSubmit] blocked — isLoading=true'); return; }
 
     const userText = input.trim();
 

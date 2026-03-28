@@ -18,6 +18,7 @@ import asyncio
 from typing import List, Dict, Any, Optional, Set
 
 import json
+import structlog
 
 from .openrouter import query_model, health_check_pipeline
 from .fallback_models import get_chain, FALLBACK_CHAINS
@@ -26,7 +27,12 @@ from .usage_logger import log_fallback_incident
 from .config import DEFAULT_MODEL, DEFAULT_CHAIRMAN
 from . import rag_store
 
+log = structlog.get_logger("dag_engine")
+
 MAX_LOOP_ITERATIONS = 10
+
+# Nœuds I/O virtuels — overlays visuels du PipelineEditor, jamais exécutés
+_IO_NODE_TYPES = {"prompt", "response"}
 
 # ─── Résolution du modèle d'un node ──────────────────────────────────────────
 
@@ -421,6 +427,8 @@ async def _run_node(
     inputs_preview = [inp for inp in node.get("inputs", []) if inp != "user_prompt"]
     _raw_model     = node.get("model", "—")
     _local_tag     = " [LOCAL]" if is_ollama_model(_raw_model) else ""
+    log.info("node_start", node_id=node_id, node_type=node_type,
+             model=_raw_model, inputs=inputs_preview, pipeline_id=pipeline_id)
     print(f"[DAG] ┌ {node_id} ({ntype_label}) model={_raw_model.split('/')[-1]}{_local_tag}")
     for inp in inputs_preview:
         prev = (outputs.get(inp, "")[:60].replace(chr(10), " ") + "…") if inp in outputs else "pending"
@@ -609,6 +617,10 @@ async def _run_node(
         cost_str      = " [local, $0.00]" if _is_local else (f" ${cost:.5f}" if cost else "")
         fallback_used = used_model != original_model
         fallback_str  = f" [fallback→{used_model.split('/')[-1]}]" if fallback_used else ""
+        log.info("node_done", node_id=node_id, model=used_model,
+                 duration_s=round(elapsed, 1), output_len=len(output_text),
+                 tokens_in=tokens_in, tokens_out=tokens_out,
+                 output_preview=output_text[:120].replace("\n", " "))
         print(f"[DAG] └ {node_id} ✓ {elapsed:.1f}s | "
               f"↑{tokens_in}t ↓{tokens_out}t{cost_str}{fallback_str} | "
               f"réponse: {output_text[:80].replace(chr(10), ' ')}…")
@@ -628,6 +640,8 @@ async def _run_node(
     except Exception as e:
         elapsed   = _time.monotonic() - _node_t
         error_msg = str(e)
+        log.error("node_error", node_id=node_id, model=original_model,
+                  error=error_msg, duration_s=round(elapsed, 1))
         if on_node_error:
             await on_node_error(node_id, error_msg, model=original_model,
                                 duration_s=round(elapsed, 1))
@@ -668,6 +682,30 @@ async def run_pipeline(
     - Tool nodes (web_search, rag_search, fact_check, mcp, …)
     - LLM nodes with cloud fallback chains and local Ollama support
     """
+    # ── Filtrer les nœuds I/O visuels (overlays frontend, pas exécutables) ────
+    nodes = [n for n in nodes if n.get("node_type") not in _IO_NODE_TYPES]
+    if not nodes:
+        log.warning("dag_empty", reason="all nodes filtered (only I/O nodes)")
+        return {"outputs": {}, "final": "", "terminal_node": {},
+                "errors": {}, "execution_order": []}
+
+    # ── Normaliser les références aux nœuds I/O virtuels dans les inputs ──────
+    # __prompt__ → user_prompt  (entrée utilisateur)
+    # __response__ → supprimé   (nœud terminal fictif, pas de sortie réelle)
+    for node in nodes:
+        normalized = []
+        for inp in node.get("inputs", []):
+            if inp == "__prompt__":
+                normalized.append("user_prompt")
+            elif inp == "__response__":
+                pass  # référence au nœud de sortie fictif — ignorée
+            else:
+                normalized.append(inp)
+        node["inputs"] = normalized
+
+    log.info("dag_execution_start", pipeline_id=pipeline_id, nodes=len(nodes),
+             node_ids=[n["id"] for n in nodes])
+
     # ── Validate ──────────────────────────────────────────────────────────────
     errors_found = check_pipeline(nodes)
     if errors_found:
@@ -772,6 +810,9 @@ async def run_pipeline(
     # ── Final output ──────────────────────────────────────────────────────────
     final_output  = outputs.get(term_id, "No output produced.")
     total_elapsed = _time.monotonic() - _dag_start
+    log.info("dag_execution_done", pipeline_id=pipeline_id, terminal_node=term_id,
+             duration_s=round(total_elapsed, 1), nodes_ok=len(outputs),
+             errors=len(node_errors), final_len=len(final_output))
     print(f"[DAG] ■ Terminé en {total_elapsed:.1f}s | "
           f"{len(outputs)} nodes OK | {len(node_errors)} erreurs")
     if node_errors:

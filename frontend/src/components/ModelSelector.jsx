@@ -67,7 +67,7 @@ export default function ModelSelector({ selectedModels, onModelsChange, webSearc
   const applyPipeline = (pipeline) => {
     setActivePipelineId(pipeline.id);
     // On passe l'id encodé dans un objet spécial pour que ChatInterface sache quel DAG utiliser
-    onModelsChange({ __pipeline_id: pipeline.id, name: pipeline.name, nodes: pipeline.nodes });
+    onModelsChange({ __pipeline_id: pipeline.id, name: pipeline.name, nodes: pipeline.cog?.nodes || pipeline.nodes });
     setOpen(false);
   };
 

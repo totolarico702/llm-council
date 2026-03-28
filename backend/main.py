@@ -14,6 +14,9 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uuid, json, asyncio, os
 from pathlib import Path
+import structlog
+
+log = structlog.get_logger("main")
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -1978,6 +1981,10 @@ async def send_message(conversation_id: str, request: SendMessageRequest,
 @api_v1.post("/conversations/{conversation_id}/message/stream")
 async def send_message_stream(conversation_id: str, request: SendMessageRequest,
                               user: dict = Depends(get_current_user)):
+    log.info("stream_handler_called", conversation_id=conversation_id,
+             has_pipeline_nodes=bool(request.pipeline_nodes),
+             pipeline_nodes_count=len(request.pipeline_nodes) if request.pipeline_nodes else 0,
+             pipeline_id=request.pipeline_id)
     conv = storage.get_conversation(conversation_id, owner_id=user["id"])
     if conv is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -2067,6 +2074,10 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
                     finally:
                         await evt_queue.put(_SENTINEL)  # signaler la fin
 
+                log.info("stream_about_to_yield",
+                         pipeline_id=request.pipeline_id,
+                         nodes_count=len(nodes),
+                         node_ids=[n["id"] for n in nodes])
                 yield f"data: {json.dumps({'type': 'dag_start', 'node_count': len(nodes), 'nodes': [{'id': n['id'], 'role': n.get('role', ''), 'model': n.get('model', '')} for n in nodes], 'pipeline_id': request.pipeline_id, 'pipeline_name': request.pipeline_name})}\n\n"
 
                 # Lancer le DAG en tâche de fond
