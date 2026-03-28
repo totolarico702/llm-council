@@ -2,7 +2,7 @@
 
 ![LLM Council](header.jpg)
 
-> **Multi-LLM deliberation engine as a service.**
+> **Multi-LLM deliberation engine.**
 > Instead of asking one model, ask a council. Models debate anonymously, rank each other, and a Chairman synthesizes the final answer.
 
 ---
@@ -21,9 +21,48 @@ The result: answers that are more robust, more balanced, and more trustworthy th
 
 ---
 
+## Screenshots
+
+![Conversation](docs/screenshots/conversation.png)
+*3-stage deliberation in action — 10 agents running in parallel, the Chairman (Gemini 2.5 Pro) synthesizes a structured final answer. Real-time execution trace on the right.*
+
+![Pipeline Editor](docs/screenshots/pipeline-editor.png)
+*Visual DAG pipeline editor — 17 nodes, 22 connections. This "brain" pipeline was generated in natural language by the AI assistant in seconds. Export as `.cog` JSON and share.*
+
+![RAG Admin](docs/screenshots/rag.png)
+*Organizational memory — drag files from your PC directly into the RAG. 1861 chunks indexed, folder-level ACL permissions, 90-day audit log.*
+
+---
+
 ## Quick Start
 
 ```bash
+git clone https://github.com/totolarico702/llm-council.git
+cd llm-council
+
+# Copy and configure environment
+cp .env.example .env
+# Edit .env and set your OPENROUTER_API_KEY
+
+# Install dependencies
+uv sync
+cd frontend && npm install && cd ..
+
+# Start
+./start.sh       # Linux/Mac
+start.bat        # Windows
+```
+
+Open [http://localhost:5173](http://localhost:5173) — default credentials: `admin` / `admin`
+
+> ⚠️ You will be forced to change the password on first login.
+
+---
+
+## Docker *(coming soon)*
+
+```bash
+# Docker image will be published on Docker Hub shortly
 docker run -d \
   -p 8001:8001 \
   -p 8002:8002 \
@@ -31,8 +70,6 @@ docker run -d \
   -v llmcouncil_data:/app/data \
   llmcouncil/council:latest
 ```
-
-That's it. API on `:8001`, MCP server on `:8002`, Pipeline Editor on `:8001`.
 
 ---
 
@@ -179,7 +216,6 @@ Pipelines are defined in `.cog` — a JSON grammar for cognitive workflows.
   },
   "nodes": [
     { "id": "input", "type": "input", "label": "User query" },
-    { "id": "inject_ctx", "type": "inject", "source": "input.context" },
     { "id": "analyst_1", "type": "llm", "model": "mistralai/mistral-medium-3",
       "system_prompt": "You are a market analyst..." },
     { "id": "analyst_2", "type": "llm", "model": "anthropic/claude-sonnet-4-5",
@@ -188,9 +224,8 @@ Pipelines are defined in `.cog` — a JSON grammar for cognitive workflows.
     { "id": "output", "type": "output", "label": "Final synthesis" }
   ],
   "edges": [
-    { "from": "input", "to": "inject_ctx" },
-    { "from": "inject_ctx", "to": "analyst_1" },
-    { "from": "inject_ctx", "to": "analyst_2" },
+    { "from": "input", "to": "analyst_1" },
+    { "from": "input", "to": "analyst_2" },
     { "from": "analyst_1", "to": "merge" },
     { "from": "analyst_2", "to": "merge" },
     { "from": "merge", "to": "output" }
@@ -210,7 +245,7 @@ Pipelines are defined in `.cog` — a JSON grammar for cognitive workflows.
 | `output` | Exit point |
 | `llm` | Cloud LLM (via OpenRouter) |
 | `llm_local` | Local LLM (via Ollama) |
-| `rag_search` | Vector search (external context) |
+| `rag_search` | Vector search (inject external context) |
 | `tool` | Web search, fact-check |
 | `mcp` | External MCP server call |
 | `condition` | Conditional branching |
@@ -222,14 +257,14 @@ Pipelines are defined in `.cog` — a JSON grammar for cognitive workflows.
 
 ## Pipeline Editor
 
-LLM Council ships with a **visual pipeline editor** at `http://localhost:8001`.
+LLM Council ships with a **visual pipeline editor** at `http://localhost:5173`.
 
-- Drag & drop DAG builder
-- AI assistant: describe a pipeline in natural language → generates `.cog`
-- Export/import `.cog` files
-- Real-time cost estimation
-- Keyboard shortcuts (`Ctrl+S`, `Ctrl+D`, `Ctrl+E`, ...)
-- Caféine mode: human validation before the Chairman's answer is sent
+- Drag & drop DAG builder with PROMPT → nodes → RESPONSE flow
+- **AI assistant**: describe a pipeline in natural language → generates `.cog` instantly
+- Export/import `.cog` files — share pipelines as JSON
+- Real-time cost estimation per node
+- Keyboard shortcuts (`Ctrl+S` save, `Ctrl+D` duplicate, `Ctrl+E` export, ...)
+- **Caféine mode**: mandatory human validation before the Chairman's answer is sent
 
 ---
 
@@ -266,16 +301,6 @@ npm install
 npm run dev
 ```
 
-Or use the included scripts:
-
-```bash
-# Windows
-start.bat
-
-# Linux/Mac
-./start.sh
-```
-
 ---
 
 ## Tech Stack
@@ -289,7 +314,7 @@ start.bat
 | Local LLMs | Ollama |
 | MCP | FastMCP |
 | Auth | JWT httpOnly cookies + API keys |
-| Deployment | Docker |
+| Deployment | Docker *(coming soon)* |
 
 ---
 
